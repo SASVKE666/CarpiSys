@@ -39,7 +39,7 @@ class InventoryController extends Controller
             'unit_cost'     => 'nullable|numeric|min:0',
             'notes'         => 'nullable|string',
         ]);
-        $data['user_id'] = $request->auth()->id();
+        $data['user_id'] = auth()->id();
 
         \App\Models\InventoryMovement::create($data); // El observer actualiza stock
         return back()->with('success', 'Movimiento registrado.');
@@ -48,17 +48,16 @@ class InventoryController extends Controller
     public function saveStock(Request $request)
     {
         $data = $request->validate([
-            'item_id'   => 'required|exists:items,id',
-            'location'  => 'required|string',
-            'qty'       => 'required|numeric|min:0',
-            'min_qty'   => 'required|numeric|min:0',
-            'reserved'  => 'required|numeric|min:0',
+            'item_id'     => 'required|exists:items,id',
+            // Se elige una ubicación existente (antes era texto libre y creaba duplicados)
+            'location_id' => 'required|exists:locations,id',
+            'qty'         => 'required|numeric|min:0',
+            'min_qty'     => 'required|numeric|min:0',
+            'reserved'    => 'required|numeric|min:0',
         ]);
 
-        $location = \App\Models\Location::firstOrCreate(['name' => $data['location']]);
-
         \App\Models\InventoryStock::updateOrCreate(
-            ['item_id' => $data['item_id'], 'location_id' => $location->id],
+            ['item_id' => $data['item_id'], 'location_id' => $data['location_id']],
             [
                 'quantity'     => $data['qty'],
                 'min_quantity' => $data['min_qty'],
