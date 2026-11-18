@@ -9,27 +9,29 @@ class DashboardController extends Controller
 {
     public function index()
     {
-        $items = \App\Models\Item::with(['category','stocks.location'])
+        $items = \App\Models\Item::with('category')
         ->where('is_active', true)
         ->orderBy('name')
         ->get()
         ->map(fn($i) => [
-            'id'       => $i->id,
-            'name'     => $i->name,
-            'sku'      => $i->sku,
-            'type'     => $i->item_type,
-            'category' => $i->category?->name ?? 'Sin categoría',
+            'id'          => $i->id,
+            'name'        => $i->name,
+            'sku'         => $i->sku,
+            'type'        => $i->item_type,
+            'category_id' => $i->category_id,
+            'category'    => $i->category?->name ?? 'Sin categoría',
             'unit'     => $i->unit,
             'cost'     => (float) $i->unit_cost,
             'notes'    => $i->notes ?? '',
         ]);
 
-    $inv = \App\Models\InventoryStock::with(['item','location'])
+    $inv = \App\Models\InventoryStock::with('location')
         ->get()
         ->map(fn($s) => [
-            'id'       => $s->id,
-            'item_id'  => $s->item_id,
-            'location' => $s->location?->name ?? '',
+            'id'          => $s->id,
+            'item_id'     => $s->item_id,
+            'location_id' => $s->location_id,
+            'location'    => $s->location?->name ?? '',
             'qty'      => (float) $s->quantity,
             'min_qty'  => (float) $s->min_quantity,
             'reserved' => (float) $s->reserved_qty,
@@ -51,9 +53,12 @@ class DashboardController extends Controller
         ]);
 
     return Inertia::render('Dashboard', [
-        'itemsData'  => $items,
-        'invData'    => $inv,
-        'ordersData' => $orders,
+        'itemsData'      => $items,
+        'invData'        => $inv,
+        'ordersData'     => $orders,
+        // Catálogos reales para los formularios (antes estaban fijos en el JSX)
+        'categoriesData' => \App\Models\Category::orderBy('name')->get(['id', 'name']),
+        'locationsData'  => \App\Models\Location::where('is_active', true)->orderBy('name')->get(['id', 'name']),
     ]);
        /*  $lowStockItems = \App\Models\InventoryStock::with('item','location')
             ->whereColumn('quantity', '<=', 'min_quantity')

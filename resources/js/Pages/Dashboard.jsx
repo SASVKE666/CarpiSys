@@ -21,43 +21,16 @@ const ITEM_TYPES = {
 const ORDER_STATUS = {
   pendiente: { label:"Pendiente",  col:C.yellow, bg:C.yellowBg },
   en_proceso:{ label:"En proceso", col:C.blue,   bg:C.blueBg   },
+  pausada:   { label:"Pausada",    col:C.muted,  bg:"#F5F4F2"  },
   completada:{ label:"Completada", col:C.green,  bg:C.greenBg  },
   cancelada: { label:"Cancelada",  col:C.red,    bg:C.redBg    },
 };
-const CATS  = ["Tableros","Madera Sólida","Herrajes","Maquinaria","Acabados","Muebles","Fijaciones","Herramienta Menor","Pinturas","Consumibles Varios","Otros"];
+// Si llega un estado desconocido, se muestra tal cual en vez de romper la pantalla.
+const statusOf = st => ORDER_STATUS[st] ?? { label:String(st), col:C.muted, bg:"#F5F4F2" };
 const UNITS = ["pieza","metro","m²","kg","litro","lata","caja","par","rollo","galón","paquete","metro lineal"];
-const LOCS  = ["Almacén A","Almacén B","Taller","Bodega Principal","Área de Corte"];
-
-// ── SEED DATA ─────────────────────────────────────────────────────────────────
-const ITEMS0 = [
- /*  {id:1,name:"Tablero Melamina Blanca 18mm",sku:"MAD-001",type:"materia_prima",category:"Tableros",unit:"pieza",cost:320,notes:"1.83×2.44m"},
-  {id:2,name:"Madera Pino 2×4",sku:"MAD-002",type:"materia_prima",category:"Madera Sólida",unit:"metro",cost:45,notes:"Pino cepillado"},
-  {id:3,name:"Corredera Telescópica 45cm",sku:"HER-001",type:"materia_prima",category:"Herrajes",unit:"par",cost:85,notes:"Para cajones"},
-  {id:4,name:"Sierra Circular Makita 7¼\"",sku:"TOOL-01",type:"herramienta",category:"Maquinaria",unit:"pieza",cost:4500,notes:"Profesional"},
-  {id:5,name:"Barniz Transparente 4L",sku:"CONS-01",type:"consumible",category:"Acabados",unit:"lata",cost:280,notes:"Alquídico"},
-  {id:6,name:"MDF 15mm Natural",sku:"MAD-003",type:"materia_prima",category:"Tableros",unit:"pieza",cost:265,notes:"2.44×1.22m"},
-  {id:7,name:"Bisagra Semi-Oculta 35mm",sku:"HER-002",type:"materia_prima",category:"Herrajes",unit:"pieza",cost:18,notes:"Puertas de muebles"},
-  {id:8,name:"Clóset 3 Puertas Corredizas",sku:"PROD-01",type:"producto",category:"Muebles",unit:"pieza",cost:0,notes:"Estándar"},
- */];
-const INV0 = [
-/*   {id:1,item_id:1,location:"Almacén A",qty:15,min_qty:5,reserved:3},
-  {id:2,item_id:2,location:"Almacén A",qty:80,min_qty:20,reserved:15},
-  {id:3,item_id:3,location:"Almacén B",qty:8,min_qty:10,reserved:2},
-  {id:4,item_id:4,location:"Taller",qty:2,min_qty:1,reserved:0},
-  {id:5,item_id:5,location:"Almacén B",qty:3,min_qty:4,reserved:1},
-  {id:6,item_id:6,location:"Almacén A",qty:22,min_qty:8,reserved:4},
-  {id:7,item_id:7,location:"Almacén B",qty:145,min_qty:50,reserved:20}, */
-];
-const OT0 = [
-  {id:"OT-001",client:"García Hernández",desc:"Cocina integral 4m",status:"en_proceso",date:"2026-05-10",mat:8500,labor:3200,overhead:1150,quoted:18000},
-  {id:"OT-002",client:"Ramírez López",desc:"Clóset master bedroom",status:"pendiente",date:"2026-05-20",mat:3200,labor:1400,overhead:460,quoted:8500},
-  {id:"OT-003",client:"Torres Martínez",desc:"Librería de pared",status:"completada",date:"2026-04-28",mat:2100,labor:960,overhead:306,quoted:6000},
-  {id:"OT-004",client:"Mendoza Parra",desc:"Centro de entretenimiento",status:"pendiente",date:"2026-05-25",mat:5600,labor:2100,overhead:760,quoted:14000},
-];
 
 // ── UTILS ─────────────────────────────────────────────────────────────────────
 const $m = n=>`$${Number(n).toLocaleString("es-MX",{minimumFractionDigits:0})}`;
-const genOTId = ()=>"OT-"+Math.random().toString(36).slice(2,6).toUpperCase();
 
 // ── STYLE SHORTCUTS ───────────────────────────────────────────────────────────
 const card = {background:C.card,borderRadius:12,border:`1px solid ${C.border}`,padding:"18px 20px"};
@@ -87,7 +60,7 @@ function Field({label,type="text",value,onChange,opts}){
       <label style={lbl}>{label}</label>
       {opts
         ? <select value={value} onChange={e=>onChange(e.target.value)} style={inp}>
-            {opts.map(o=><option key={o.v||o} value={o.v||o}>{o.l||o}</option>)}
+            {opts.map(o=>{const v=o.v??o, l=o.l??o; return <option key={v} value={v}>{l}</option>;})}
           </select>
         : <input type={type} value={value} onChange={e=>onChange(e.target.value)} style={inp}/>}
     </div>
@@ -151,10 +124,10 @@ function Dashboard({items,inv,orders,setView}){
             <thead><tr>{["OT","Cliente","Estado","Cotizado"].map(h=><th key={h} style={th}>{h}</th>)}</tr></thead>
             <tbody>
               {orders.slice(0,4).map(o=>{
-                const s=ORDER_STATUS[o.status];
+                const s=statusOf(o.status);
                 return(
                   <tr key={o.id} onMouseEnter={e=>e.currentTarget.style.background="#FFFBF5"} onMouseLeave={e=>e.currentTarget.style.background=""}>
-                    <td style={{...td,fontSize:11,fontWeight:700,color:C.amber,fontFamily:"monospace"}}>{o.id}</td>
+                    <td style={{...td,fontSize:11,fontWeight:700,color:C.amber,fontFamily:"monospace"}}>{o.code}</td>
                     <td style={{...td,fontSize:12,fontWeight:600,color:C.text}}>{o.client}<br/><span style={{fontSize:10,color:C.faint}}>{o.desc}</span></td>
                     <td style={td}><Tag label={s.label} col={s.col} bg={s.bg}/></td>
                     <td style={{...td,fontSize:13,fontWeight:700,color:C.text}}>{$m(o.quoted)}</td>
@@ -318,13 +291,13 @@ function OrdersView({orders,onEdit,onNew,onStatus}){
         const cost=Number(o.mat)+Number(o.labor)+Number(o.overhead);
         const profit=Number(o.quoted)-cost;
         const margin=Number(o.quoted)===0?"0.0":(profit/Number(o.quoted)*100).toFixed(1);
-        const s=ORDER_STATUS[o.status];
+        const s=statusOf(o.status);
         return(
           <div key={o.id} style={card}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",flexWrap:"wrap",gap:12}}>
               <div style={{display:"flex",gap:14,alignItems:"center"}}>
                 <div style={{background:C.amberBg,borderRadius:8,padding:"8px 12px",textAlign:"center",minWidth:74}}>
-                  <p style={{fontSize:10,fontWeight:700,color:C.amber,fontFamily:"monospace"}}>{o.id}</p>
+                  <p style={{fontSize:10,fontWeight:700,color:C.amber,fontFamily:"monospace"}}>{o.code}</p>
                   <p style={{fontSize:10,color:C.muted,marginTop:2}}>{o.date}</p>
                 </div>
                 <div>
@@ -408,10 +381,10 @@ function CostingView({orders}){
               const m=Number(o.quoted)===0?"0.0":(p/Number(o.quoted)*100).toFixed(1);
               const mc=Number(m)>=20?C.green:Number(m)>=10?C.yellow:C.red;
               const mb=Number(m)>=20?C.greenBg:Number(m)>=10?C.yellowBg:C.redBg;
-              const s=ORDER_STATUS[o.status];
+              const s=statusOf(o.status);
               return(
                 <tr key={o.id} onMouseEnter={e=>e.currentTarget.style.background="#FFFBF5"} onMouseLeave={e=>e.currentTarget.style.background=""}>
-                  <td style={{...td,fontSize:11,fontWeight:700,color:C.amber,fontFamily:"monospace"}}>{o.id}</td>
+                  <td style={{...td,fontSize:11,fontWeight:700,color:C.amber,fontFamily:"monospace"}}>{o.code}</td>
                   <td style={{...td,fontSize:12,color:C.text}}>{o.client}</td>
                   <td style={{...td,fontSize:12,fontWeight:700,color:C.text}}>{$m(o.quoted)}</td>
                   <td style={{...td,fontSize:12,color:C.muted}}>{$m(c)}</td>
@@ -485,8 +458,9 @@ function ReportsView({items,inv,orders}){
 }
 
 // ── ITEM MODAL ────────────────────────────────────────────────────────────────
-function ItemModal({editing,onSave,onClose}){
-  const [f,setF]=useState(editing||{name:"",sku:"",type:"materia_prima",category:"Tableros",unit:"pieza",cost:0,notes:""});
+function ItemModal({editing,categories,onSave,onClose}){
+  const [f,setF]=useState(editing||{name:"",sku:"",type:"materia_prima",category_id:categories[0]?.id??null,unit:"pieza",cost:0,notes:""});
+  const catOpts=[{v:"",l:"Sin categoría"},...categories.map(c=>({v:c.id,l:c.name}))];
   const set=(k,v)=>setF(p=>({...p,[k]:v}));
   const t=ITEM_TYPES[f.type];
   const typeOpts=Object.entries(ITEM_TYPES).map(([k,v])=>({v:k,l:v.label}));
@@ -499,10 +473,10 @@ function ItemModal({editing,onSave,onClose}){
         </div>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
           <Field label="Tipo de Artículo" value={f.type} onChange={v=>set("type",v)} opts={typeOpts}/>
-          <Field label="Categoría" value={f.category} onChange={v=>set("category",v)} opts={CATS}/>
+          <Field label="Categoría" value={f.category_id??""} onChange={v=>set("category_id",v===""?null:Number(v))} opts={catOpts}/>
         </div>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
-          <Field label="Unidad de Medida" value={f.unit} onChange={v=>set("unit",v)} opts={UNITS}/>
+          <Field label="Unidad de Medida" value={f.unit} onChange={v=>set("unit",v)} opts={UNITS.includes(f.unit)?UNITS:[f.unit,...UNITS]}/>
           <Field label="Costo Unitario ($)" type="number" value={f.cost} onChange={v=>set("cost",Number(v))}/>
         </div>
         <Field label="Notas / Especificaciones" value={f.notes} onChange={v=>set("notes",v)}/>
@@ -520,8 +494,8 @@ function ItemModal({editing,onSave,onClose}){
 }
 
 // ── INV MODAL ─────────────────────────────────────────────────────────────────
-function InvModal({editing,items,onSave,onClose}){
-  const [f,setF]=useState(editing||{item_id:items[0]?.id||1,location:"Almacén A",qty:0,min_qty:0,reserved:0});
+function InvModal({editing,items,locations,onSave,onClose}){
+  const [f,setF]=useState(editing||{item_id:items[0]?.id??"",location_id:locations[0]?.id??"",qty:0,min_qty:0,reserved:0});
   const set=(k,v)=>setF(p=>({...p,[k]:v}));
   return(
     <Modal title={f.id?"Editar Registro":"Nuevo Registro de Inventario"} onClose={onClose}>
@@ -532,7 +506,7 @@ function InvModal({editing,items,onSave,onClose}){
             {items.map(i=><option key={i.id} value={i.id}>{i.sku} — {i.name}</option>)}
           </select>
         </div>
-        <Field label="Ubicación" value={f.location} onChange={v=>set("location",v)} opts={LOCS}/>
+        <Field label="Ubicación" value={f.location_id} onChange={v=>set("location_id",Number(v))} opts={locations.map(l=>({v:l.id,l:l.name}))}/>
         <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:10}}>
           <Field label="Cantidad Total" type="number" value={f.qty} onChange={v=>set("qty",Number(v))}/>
           <Field label="Stock Mínimo" type="number" value={f.min_qty} onChange={v=>set("min_qty",Number(v))}/>
@@ -540,7 +514,7 @@ function InvModal({editing,items,onSave,onClose}){
         </div>
         <div style={{display:"flex",justifyContent:"flex-end",gap:8,paddingTop:8,borderTop:`1px solid ${C.border}`}}>
           <Btn secondary label="Cancelar" onClick={onClose}/>
-          <Btn label="Guardar Registro" onClick={()=>onSave(f)}/>
+          <Btn label="Guardar Registro" onClick={()=>{if(!f.item_id||!f.location_id){alert("Selecciona un artículo y una ubicación");return;}onSave(f);}}/>
         </div>
       </div>
     </Modal>
@@ -604,17 +578,16 @@ const NAV = [
 ];
 const TITLES = {dashboard:"Dashboard",items:"Artículos",inventory:"Inventario",orders:"Órdenes de Trabajo",costing:"Costeo & Márgenes",reports:"Reportes"};
 
-export default function App({ itemsData=[], invData=[], ordersData=[] }){
+export default function App({ itemsData=[], invData=[], ordersData=[], categoriesData=[], locationsData=[] }){
   const [view,   setView]   = useState("dashboard");
-  const [items,  setItems]  = useState(itemsData.length  ? itemsData  : ITEMS0);
-  const [inv,    setInv]    = useState(invData.length    ? invData    : INV0);
-  const [orders, setOrders] = useState(
-    (ordersData.length ? ordersData : OT0)
-      .sort((a,b) => new Date(b.date) - new Date(a.date))
-  );
+  // Los datos se leen siempre de las props del servidor (Inertia). Antes se copiaban a
+  // useState, que solo usa el valor inicial, y la pantalla no mostraba lo recién guardado.
+  // La copia [...] evita modificar el arreglo original al ordenar.
+  const items  = itemsData;
+  const inv    = invData;
+  const orders = [...ordersData].sort((a,b) => new Date(b.date) - new Date(a.date));
   const [modal,  setModal]  = useState(null);
   const [editing,setEditing]= useState(null);
-  const [nxtId,  setNxtId]  = useState(9);
 
   const lowCount = inv.filter(r=>r.qty<=r.min_qty).length;
 
@@ -623,6 +596,7 @@ export default function App({ itemsData=[], invData=[], ordersData=[] }){
   const saveItem = f => {
     const payload = {
         name: f.name, sku: f.sku, item_type: f.type,
+        category_id: f.category_id ?? null,
         unit: f.unit, unit_cost: f.cost, notes: f.notes,
         is_active: true,
       };
@@ -633,7 +607,13 @@ export default function App({ itemsData=[], invData=[], ordersData=[] }){
       }
   };
   const saveInv = f => {
-    router.post('/inventory/stock', f, { preserveScroll:true, onSuccess: closeModal });
+    router.post('/inventory/stock', {
+      item_id:     f.item_id,
+      location_id: f.location_id,
+      qty:         Number(f.qty),
+      min_qty:     Number(f.min_qty),
+      reserved:    Number(f.reserved),
+    }, { preserveScroll:true, onSuccess: closeModal });
   };
   const saveOrder = f => {
   const payload = {
@@ -653,7 +633,12 @@ export default function App({ itemsData=[], invData=[], ordersData=[] }){
   }
 };
   const deleteItem = id => {
+    if(!window.confirm("¿Desactivar este artículo? Se conserva su historial de movimientos.")) return;
     router.delete(`/items/${id}`, { preserveScroll:true });
+  };
+  // Guarda el nuevo estado de la orden en el servidor (antes solo cambiaba en memoria).
+  const changeStatus = (id, status) => {
+    router.put(`/work-orders/${id}`, { status }, { preserveScroll:true });
   };
   return(
     <div style={{display:"flex",minHeight:"100vh",fontFamily:"'DM Sans',system-ui,sans-serif",background:C.bg,position:"relative"}}>
@@ -709,14 +694,14 @@ export default function App({ itemsData=[], invData=[], ordersData=[] }){
         {view==="dashboard" && <Dashboard items={items} inv={inv} orders={orders} setView={setView}/>}
         {view==="items"     && <ItemsView items={items} inv={inv} onEdit={i=>{setEditing(i);setModal("item");}} onDelete={deleteItem} onNew={()=>{setEditing(null);setModal("item");}}/>}
         {view==="inventory" && <InventoryView items={items} inv={inv} onNew={()=>{setEditing(null);setModal("inv");}}/>}
-        {view==="orders"    && <OrdersView orders={orders} onEdit={o=>{setEditing(o);setModal("order");}} onNew={()=>{setEditing(null);setModal("order");}} onStatus={(id,s)=>setOrders(p=>p.map(o=>o.id===id?{...o,status:s}:o))}/>}
+        {view==="orders"    && <OrdersView orders={orders} onEdit={o=>{setEditing(o);setModal("order");}} onNew={()=>{setEditing(null);setModal("order");}} onStatus={changeStatus}/>}
         {view==="costing"   && <CostingView orders={orders}/>}
         {view==="reports"   && <ReportsView items={items} inv={inv} orders={orders}/>}
       </main>
 
       {/* ── MODALS ── */}
-      {modal==="item"  && <ItemModal  editing={editing} onSave={saveItem}  onClose={closeModal}/>}
-      {modal==="inv"   && <InvModal   editing={editing} items={items}      onSave={saveInv}   onClose={closeModal}/>}
+      {modal==="item"  && <ItemModal  editing={editing} categories={categoriesData} onSave={saveItem} onClose={closeModal}/>}
+      {modal==="inv"   && <InvModal   editing={editing} items={items} locations={locationsData} onSave={saveInv} onClose={closeModal}/>}
       {modal==="order" && <OrderModal editing={editing}                    onSave={saveOrder} onClose={closeModal}/>}
     </div>
   );

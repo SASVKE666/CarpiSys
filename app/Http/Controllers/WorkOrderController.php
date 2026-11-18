@@ -31,50 +31,55 @@ class WorkOrderController extends Controller
         ]);
     }
 
+    // Estados permitidos (coinciden con el enum de la migración work_orders)
+    private const STATUSES = 'pendiente,en_proceso,pausada,completada,cancelada';
+
     public function store(Request $request)
-{
-    $data = $request->validate([
-        'client_name'    => 'required|string|max:150',
-        'description'    => 'required|string',
-        'status'         => 'nullable|string',
-        'start_date'     => 'nullable|date',
-        'materials_cost' => 'nullable|numeric|min:0',
-        'labor_cost'     => 'nullable|numeric|min:0',
-        'overhead_cost'  => 'nullable|numeric|min:0',
-        'quoted_price'   => 'nullable|numeric|min:0',
-        'notes'          => 'nullable|string',
-    ]);
+    {
+        $data = $request->validate([
+            'client_name'    => 'required|string|max:150',
+            'description'    => 'required|string',
+            'status'         => 'nullable|in:' . self::STATUSES,
+            'start_date'     => 'nullable|date',
+            'materials_cost' => 'nullable|numeric|min:0',
+            'labor_cost'     => 'nullable|numeric|min:0',
+            'overhead_cost'  => 'nullable|numeric|min:0',
+            'quoted_price'   => 'nullable|numeric|min:0',
+            'notes'          => 'nullable|string',
+        ]);
 
-    $data['status']         = $data['status']         ?? 'pendiente';
-    $data['materials_cost'] = $data['materials_cost'] ?? 0;
-    $data['labor_cost']     = $data['labor_cost']     ?? 0;
-    $data['overhead_cost']  = $data['overhead_cost']  ?? 0;
-    $data['quoted_price']   = $data['quoted_price']   ?? 0;
-    $data['created_by']     = auth()->id() ?? null;
+        $data['status']         = $data['status']         ?? 'pendiente';
+        $data['materials_cost'] = $data['materials_cost'] ?? 0;
+        $data['labor_cost']     = $data['labor_cost']     ?? 0;
+        $data['overhead_cost']  = $data['overhead_cost']  ?? 0;
+        $data['quoted_price']   = $data['quoted_price']   ?? 0;
+        $data['created_by']     = auth()->id();
 
-    \App\Models\WorkOrder::create($data);
+        \App\Models\WorkOrder::create($data);
 
-    return redirect()->route('dashboard');
-}
+        return redirect()->route('dashboard');
+    }
 
+    // Actualiza una orden existente. Acepta cambios parciales (por ejemplo,
+    // solo { status }) gracias a "sometimes": solo se valida lo que se envía.
     public function update(Request $request, \App\Models\WorkOrder $workOrder)
     {
         $data = $request->validate([
-    'client_name'    => 'required|string|max:150',
-    'description'    => 'required|string',
-    'status'         => 'nullable|string',
-    'start_date'     => 'nullable|date',
-    'materials_cost' => 'required|numeric|min:0',
-    'labor_cost'     => 'required|numeric|min:0',
-    'overhead_cost'  => 'required|numeric|min:0',
-    'quoted_price'   => 'required|numeric|min:0',
-    'notes'          => 'nullable|string',
-]);
-$data['created_by'] = auth()->id() ?? null;
-if(empty($data['status'])) $data['status'] = 'pendiente';
+            'client_name'    => 'sometimes|required|string|max:150',
+            'description'    => 'sometimes|required|string',
+            'status'         => 'sometimes|required|in:' . self::STATUSES,
+            'start_date'     => 'nullable|date',
+            'materials_cost' => 'sometimes|required|numeric|min:0',
+            'labor_cost'     => 'sometimes|required|numeric|min:0',
+            'overhead_cost'  => 'sometimes|required|numeric|min:0',
+            'quoted_price'   => 'sometimes|required|numeric|min:0',
+            'notes'          => 'nullable|string',
+        ]);
 
-\App\Models\WorkOrder::create($data);
-return redirect()->route('dashboard');
+        // Antes se llamaba a create(), lo que duplicaba la orden en cada edición.
+        $workOrder->update($data);
+
+        return redirect()->route('dashboard');
     }
 
     // Registrar tiempo muerto (instrumento de medición)
