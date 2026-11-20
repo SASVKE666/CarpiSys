@@ -62,7 +62,11 @@ function Field({label,type="text",value,onChange,opts}){
         ? <select value={value} onChange={e=>onChange(e.target.value)} style={inp}>
             {opts.map(o=>{const v=o.v??o, l=o.l??o; return <option key={v} value={v}>{l}</option>;})}
           </select>
-        : <input type={type} value={value} onChange={e=>onChange(e.target.value)} style={inp}/>}
+        : <input type={type} value={value} onChange={e=>onChange(e.target.value)} style={inp}
+            // En campos numéricos, al hacer clic se selecciona todo el contenido (así el "0" se reemplaza al escribir).
+            // El setTimeout evita que el navegador deshaga la selección al soltar el clic.
+            onFocus={type==="number" ? e=>{const t=e.target; setTimeout(()=>t.select(),0);} : undefined}
+            inputMode={type==="number" ? "decimal" : undefined}/>}
     </div>
   );
 }
