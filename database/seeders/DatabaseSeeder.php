@@ -63,11 +63,11 @@ class DatabaseSeeder extends Seeder
             ],
             [
                 'name' => 'Bisagra Bidimensional Cierre Lento', 'sku' => 'MAT-002', 'item_type' => 'materia_prima', 
-                'category_id' => 3, 'unit' => 'pieza', 'unit_cost' => 25.50, // 3 = Herrajes 'is_active' => true, 'created_at' => $now, 'updated_at' => $now
+                'category_id' => 3, 'unit' => 'pieza', 'unit_cost' => 25.50, 'is_active' => true, 'created_at' => $now, 'updated_at' => $now // category 3 = Herrajes
             ],
             [
                 'name' => 'Pegamento Blanco Profesional 1 Galón', 'sku' => 'CON-001', 'item_type' => 'consumible', 
-                'category_id' => 10, 'unit' => 'galon', 'unit_cost' => 280.00, // 10 = Consumibles Varios 'is_active' => true, 'created_at' => $now, 'updated_at' => $now
+                'category_id' => 10, 'unit' => 'galon', 'unit_cost' => 280.00, 'is_active' => true, 'created_at' => $now, 'updated_at' => $now // category 10 = Consumibles Varios
             ],
             [
                 'name' => 'Sierra Circular Inalámbrica Makita', 'sku' => 'HER-001', 'item_type' => 'herramienta', 
