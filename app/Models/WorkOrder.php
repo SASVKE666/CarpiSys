@@ -57,7 +57,7 @@ class WorkOrder extends Model {
             }
         });
         static::updated(function (self $ot) {
-            if ($ot->isDirty('status') && $ot->status === 'completada') {
+            if ($ot->wasChanged('status') && $ot->status === 'completada') {
                 $ot->completed_date = now()->toDateString();
                 $ot->saveQuietly();
             }

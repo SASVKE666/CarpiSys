@@ -20,11 +20,20 @@ class DatabaseSeeder extends Seeder
         // User::factory(10)->create();
         $now = Carbon::now();
 
-        User::factory()->create([
-            'name' => 'Test User',
-            'email' => 'test@example.com',
-        ]);
-        
+        // Ya no se crea un usuario de prueba con contraseña conocida: con el sistema
+        // accesible por la red local sería una puerta abierta. El administrador se crea con
+        //   php artisan carpisys:crear-usuario --rol=admin
+        // o, al sembrar, definiendo ADMIN_EMAIL y ADMIN_PASSWORD en el archivo .env.
+        if (env('ADMIN_EMAIL') && env('ADMIN_PASSWORD')) {
+            $admin = User::firstOrNew(['email' => strtolower(env('ADMIN_EMAIL'))]);
+            $admin->name = env('ADMIN_NAME', 'Administrador');
+            $admin->password = env('ADMIN_PASSWORD');
+            $admin->role = User::ROLE_ADMIN;
+            $admin->is_active = true;
+            $admin->email_verified_at = $now;
+            $admin->save();
+        }
+
         DB::table('suppliers')->insert([
             ['name' => 'Maderas y Triplay de Nayarit', 'contact' => 'Carlos Robles', 'phone' => '3111234567', 'email' => 'ventas@maderasnayarit.com', 'is_active' => true, 'created_at' => $now, 'updated_at' => $now],
             ['name' => 'Herrajes Finos Tepic', 'contact' => 'Ana Gómez', 'phone' => '3119876543', 'email' => 'ana@herrajestepic.com', 'is_active' => true, 'created_at' => $now, 'updated_at' => $now],
