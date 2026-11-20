@@ -6,9 +6,12 @@
 
         <title inertia>{{ config('app.name', 'Laravel') }}</title>
 
-        <!-- Fonts -->
-        <link rel="preconnect" href="https://fonts.bunny.net">
-        <link href="https://fonts.bunny.net/css?family=figtree:400,500,600&display=swap" rel="stylesheet" />
+        <!-- Acceso directo en la pantalla de inicio del celular (ver README: red local).
+             Sin fuentes externas: el sistema debe abrir rápido aunque la red no tenga internet. -->
+        <link rel="manifest" href="/manifest.webmanifest">
+        <link rel="apple-touch-icon" href="/icons/icon-192.png">
+        <meta name="theme-color" content="#1C1917">
+        <meta name="mobile-web-app-capable" content="yes">
 
         <!-- Scripts -->
         @routes

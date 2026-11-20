@@ -16,6 +16,12 @@ return Application::configure(basePath: dirname(__DIR__))
             \Illuminate\Http\Middleware\AddLinkHeadersForPreloadedAssets::class,
         ]);
 
+        // Alias usados en routes/web.php: ->middleware('role:admin') y ->middleware('active')
+        $middleware->alias([
+            'role'   => \App\Http\Middleware\EnsureUserHasRole::class,
+            'active' => \App\Http\Middleware\EnsureUserIsActive::class,
+        ]);
+
         // Aquí se agrega el middleware de Inertia para las rutas web
        $middleware->web(append: [
             \App\Http\Middleware\HandleInertiaRequests::class,

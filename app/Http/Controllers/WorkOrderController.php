@@ -76,6 +76,12 @@ class WorkOrderController extends Controller
             'notes'          => 'nullable|string',
         ]);
 
+        // Los operarios solo pueden cambiar el estado de la orden; precios, costos y
+        // datos del cliente los gestiona el administrador.
+        if (! $request->user()->isAdmin()) {
+            abort_unless(array_keys($data) === ['status'], 403, 'Solo el administrador puede editar los datos de la orden.');
+        }
+
         // Antes se llamaba a create(), lo que duplicaba la orden en cada edición.
         $workOrder->update($data);
 

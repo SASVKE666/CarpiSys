@@ -1,8 +1,8 @@
 import { useState } from "react";
-import { router } from '@inertiajs/react';
+import { router, usePage } from '@inertiajs/react';
 import { LayoutDashboard, Package, Archive, FileText, DollarSign, BarChart2,
          AlertTriangle, Plus, Pencil, Trash2, X, Layers, Wrench,
-         ShoppingBag, Zap, TrendingUp, CheckCircle } from "lucide-react";
+         ShoppingBag, Zap, TrendingUp, CheckCircle, Menu, Users } from "lucide-react";
 
 // ── COLOR SYSTEM ──────────────────────────────────────────────────────────────
 const C = {
@@ -69,9 +69,9 @@ function Field({label,type="text",value,onChange,opts}){
 
 function Modal({title,onClose,children,width=500}){
   return(
-    <div style={{position:"absolute",inset:0,background:"rgba(0,0,0,.5)",zIndex:99,
+    <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.5)",zIndex:130,overflowY:"auto",
       display:"flex",alignItems:"flex-start",justifyContent:"center",
-      padding:"28px 16px",minHeight:"100%",boxSizing:"border-box"}}>
+      padding:"28px 16px",boxSizing:"border-box"}}>
       <div style={{background:C.card,borderRadius:14,width:"100%",maxWidth:width,border:`1px solid ${C.border}`}}>
         <div style={{padding:"15px 20px",borderBottom:`1px solid ${C.border}`,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
           <p style={{fontSize:16,fontWeight:700,color:C.text,margin:0}}>{title}</p>
@@ -103,7 +103,7 @@ function Dashboard({items,inv,orders,setView}){
   return(
     <div style={{display:"flex",flexDirection:"column",gap:16}}>
       {/* KPIs */}
-      <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:12}}>
+      <div className="rg2" style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:12}}>
         {kpis.map(k=>(
           <div key={k.label} style={{...card,borderTop:`3px solid ${k.accent}`}}>
             <p style={{fontSize:11,fontWeight:600,color:C.muted,textTransform:"uppercase",letterSpacing:.4}}>{k.label}</p>
@@ -113,14 +113,15 @@ function Dashboard({items,inv,orders,setView}){
         ))}
       </div>
 
-      <div style={{display:"grid",gridTemplateColumns:"3fr 2fr",gap:14}}>
+      <div className="rg1" style={{display:"grid",gridTemplateColumns:"3fr 2fr",gap:14}}>
         {/* Recent orders */}
         <div style={card}>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
             <p style={{fontWeight:700,fontSize:14,color:C.text}}>Órdenes Recientes</p>
             <button onClick={()=>setView("orders")} style={{background:"none",border:"none",cursor:"pointer",fontSize:11,fontWeight:700,color:C.amber}}>Ver todas →</button>
           </div>
-          <table style={{width:"100%",borderCollapse:"collapse"}}>
+          <div style={{overflowX:"auto"}}>
+          <table style={{width:"100%",borderCollapse:"collapse",minWidth:420}}>
             <thead><tr>{["OT","Cliente","Estado","Cotizado"].map(h=><th key={h} style={th}>{h}</th>)}</tr></thead>
             <tbody>
               {orders.slice(0,4).map(o=>{
@@ -136,6 +137,7 @@ function Dashboard({items,inv,orders,setView}){
               })}
             </tbody>
           </table>
+          </div>
         </div>
 
         {/* Alerts */}
@@ -168,7 +170,7 @@ function Dashboard({items,inv,orders,setView}){
       {/* Type summary */}
       <div style={card}>
         <p style={{fontWeight:700,fontSize:14,color:C.text,marginBottom:14}}>Artículos por Tipo</p>
-        <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:10}}>
+        <div className="rg2" style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:10}}>
           {Object.entries(ITEM_TYPES).map(([key,t])=>{
             const cnt=items.filter(i=>i.type===key).length;
             const v=inv.filter(r=>items.find(i=>i.id===r.item_id)?.type===key).reduce((s,r)=>{const i=items.find(x=>x.id===r.item_id);return s+(i?.cost||0)*r.qty;},0);
@@ -188,7 +190,7 @@ function Dashboard({items,inv,orders,setView}){
 }
 
 // ── ITEMS VIEW ────────────────────────────────────────────────────────────────
-function ItemsView({items,inv,onEdit,onDelete,onNew}){
+function ItemsView({items,inv,onEdit,onDelete,onNew,canEdit}){
   const [q,setQ]   = useState("");
   const [ft,setFt] = useState("all");
   const stockFor   = id=>inv.find(r=>r.item_id===id);
@@ -205,10 +207,10 @@ function ItemsView({items,inv,onEdit,onDelete,onNew}){
               padding:"5px 11px",fontSize:11,fontWeight:700,fontFamily:"inherit"}}>{l}</button>
           ))}
         </div>
-        <div style={{marginLeft:"auto"}}><Btn label="Nuevo Artículo" Icon={Plus} onClick={onNew}/></div>
+        {canEdit&&<div style={{marginLeft:"auto"}}><Btn label="Nuevo Artículo" Icon={Plus} onClick={onNew}/></div>}
       </div>
-      <div style={{...card,padding:0,overflow:"hidden"}}>
-        <table style={{width:"100%",borderCollapse:"collapse"}}>
+      <div style={{...card,padding:0,overflowX:"auto"}}>
+        <table style={{width:"100%",borderCollapse:"collapse",minWidth:560}}>
           <thead><tr>{["SKU","Nombre","Tipo","Categoría","Unidad","Costo Unit.","Stock",""].map(h=><th key={h} style={th}>{h}</th>)}</tr></thead>
           <tbody>
             {filtered.map(item=>{
@@ -223,10 +225,10 @@ function ItemsView({items,inv,onEdit,onDelete,onNew}){
                   <td style={{...td,fontSize:13,fontWeight:700,color:C.text}}>{item.cost>0?$m(item.cost):"—"}</td>
                   <td style={td}>{stk?<span style={{background:low?C.redBg:C.greenBg,color:low?C.red:C.green,padding:"3px 9px",borderRadius:99,fontSize:11,fontWeight:700}}>{stk.qty} {item.unit}</span>:<span style={{color:C.faint,fontSize:11}}>Sin registro</span>}</td>
                   <td style={{...td,textAlign:"right"}}>
-                    <div style={{display:"flex",gap:6,justifyContent:"flex-end"}}>
+                    {canEdit&&<div style={{display:"flex",gap:6,justifyContent:"flex-end"}}>
                       <Btn small secondary label="Editar" Icon={Pencil} onClick={()=>onEdit(item)}/>
                       <Btn small danger Icon={Trash2} onClick={()=>onDelete(item.id)}/>
-                    </div>
+                    </div>}
                   </td>
                 </tr>
               );
@@ -240,7 +242,7 @@ function ItemsView({items,inv,onEdit,onDelete,onNew}){
 }
 
 // ── INVENTORY VIEW ────────────────────────────────────────────────────────────
-function InventoryView({items,inv,onNew}){
+function InventoryView({items,inv,onNew,canEdit}){
   const low=inv.filter(r=>r.qty<=r.min_qty);
   return(
     <div style={{display:"flex",flexDirection:"column",gap:14}}>
@@ -250,9 +252,9 @@ function InventoryView({items,inv,onNew}){
           <span style={{fontSize:13,color:C.red,fontWeight:700}}>{low.length} artículo(s) con stock menor al mínimo — se requiere reabasto.</span>
         </div>
       )}
-      <div style={{display:"flex",justifyContent:"flex-end"}}><Btn label="Agregar Registro" Icon={Plus} onClick={onNew}/></div>
-      <div style={{...card,padding:0,overflow:"hidden"}}>
-        <table style={{width:"100%",borderCollapse:"collapse"}}>
+      {canEdit&&<div style={{display:"flex",justifyContent:"flex-end"}}><Btn label="Agregar Registro" Icon={Plus} onClick={onNew}/></div>}
+      <div style={{...card,padding:0,overflowX:"auto"}}>
+        <table style={{width:"100%",borderCollapse:"collapse",minWidth:560}}>
           <thead><tr>{["Artículo","Tipo","Ubicación","Total","Disponible","Reservado","Stock Mín.","Estado"].map(h=><th key={h} style={th}>{h}</th>)}</tr></thead>
           <tbody>
             {inv.map(r=>{
@@ -283,10 +285,10 @@ function InventoryView({items,inv,onNew}){
 }
 
 // ── ORDERS VIEW ───────────────────────────────────────────────────────────────
-function OrdersView({orders,onEdit,onNew,onStatus}){
+function OrdersView({orders,onEdit,onNew,onStatus,canEdit}){
   return(
     <div style={{display:"flex",flexDirection:"column",gap:14}}>
-      <div style={{display:"flex",justifyContent:"flex-end"}}><Btn label="Nueva Orden" Icon={Plus} onClick={onNew}/></div>
+      {canEdit&&<div style={{display:"flex",justifyContent:"flex-end"}}><Btn label="Nueva Orden" Icon={Plus} onClick={onNew}/></div>}
       {orders.map(o=>{
         const cost=Number(o.mat)+Number(o.labor)+Number(o.overhead);
         const profit=Number(o.quoted)-cost;
@@ -311,10 +313,10 @@ function OrdersView({orders,onEdit,onNew,onStatus}){
                   style={{...inp,width:"auto",fontSize:11,padding:"5px 8px"}}>
                   {Object.entries(ORDER_STATUS).map(([v,x])=><option key={v} value={v}>{x.label}</option>)}
                 </select>
-                <Btn small secondary label="Editar" Icon={Pencil} onClick={()=>onEdit(o)}/>
+                {canEdit&&<Btn small secondary label="Editar" Icon={Pencil} onClick={()=>onEdit(o)}/>}
               </div>
             </div>
-            <div style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:8,marginTop:14,paddingTop:14,borderTop:`1px solid ${C.border}`}}>
+            <div className="rg2" style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:8,marginTop:14,paddingTop:14,borderTop:`1px solid ${C.border}`}}>
               {[{l:"Materiales",v:$m(o.mat),c:C.amber},{l:"Mano de Obra",v:$m(o.labor),c:C.purple},
                 {l:"Gastos Ind.",v:$m(o.overhead),c:C.teal},{l:"Costo Total",v:$m(cost),c:C.text},
                 {l:"Margen",v:`${margin}%`,c:profit>=0?C.green:C.red}].map(x=>(
@@ -340,7 +342,7 @@ function CostingView({orders}){
   const avg=tQ===0?"0.0":((profit/tQ)*100).toFixed(1);
   return(
     <div style={{display:"flex",flexDirection:"column",gap:16}}>
-      <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:12}}>
+      <div className="rg1" style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:12}}>
         {[{l:"Total Cotizado",v:$m(tQ),c:C.green},{l:"Costo Real Total",v:$m(tC),c:C.red},
           {l:"Utilidad Bruta",v:$m(profit),sub:`Margen: ${avg}%`,c:profit>=0?C.green:C.red}].map(k=>(
           <div key={k.l} style={{...card,borderLeft:`4px solid ${k.c}`}}>
@@ -352,7 +354,7 @@ function CostingView({orders}){
       </div>
       <div style={card}>
         <p style={{fontWeight:700,fontSize:14,color:C.text,marginBottom:14}}>Estructura de Costos (Órdenes Completadas)</p>
-        <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:12}}>
+        <div className="rg1" style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:12}}>
           {[{l:"Materiales Directos",v:tM,c:C.amber},{l:"Mano de Obra Directa",v:tL,c:C.purple},{l:"Costos Indirectos (CIF)",v:tO,c:C.teal}].map(r=>{
             const pct=tC===0?0:(r.v/tC*100).toFixed(1);
             return(
@@ -368,11 +370,11 @@ function CostingView({orders}){
           })}
         </div>
       </div>
-      <div style={{...card,padding:0,overflow:"hidden"}}>
+      <div style={{...card,padding:0,overflowX:"auto"}}>
         <div style={{padding:"13px 16px",borderBottom:`1px solid ${C.border}`}}>
           <p style={{fontWeight:700,fontSize:14,color:C.text}}>Análisis por Orden</p>
         </div>
-        <table style={{width:"100%",borderCollapse:"collapse"}}>
+        <table style={{width:"100%",borderCollapse:"collapse",minWidth:560}}>
           <thead><tr>{["OT","Cliente","Cotizado","Costo Real","Utilidad","Margen","Estado"].map(h=><th key={h} style={th}>{h}</th>)}</tr></thead>
           <tbody>
             {orders.map(o=>{
@@ -405,7 +407,7 @@ function CostingView({orders}){
 function ReportsView({items,inv,orders}){
   const totalVal=inv.reduce((s,r)=>{const i=items.find(x=>x.id===r.item_id);return s+(i?i.cost*r.qty:0);},0);
   return(
-    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}>
+    <div className="rg1" style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}>
       <div style={card}>
         <p style={{fontWeight:700,fontSize:14,color:C.text,marginBottom:14}}>Inventario por Tipo de Artículo</p>
         {Object.entries(ITEM_TYPES).map(([key,t])=>{
@@ -467,15 +469,15 @@ function ItemModal({editing,categories,onSave,onClose}){
   return(
     <Modal title={f.id?"Editar Artículo":"Nuevo Artículo"} onClose={onClose}>
       <div style={{display:"flex",flexDirection:"column",gap:12}}>
-        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+        <div className="rg1" style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
           <Field label="Nombre del Artículo *" value={f.name} onChange={v=>set("name",v)}/>
           <Field label="SKU / Código *" value={f.sku} onChange={v=>set("sku",v)}/>
         </div>
-        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+        <div className="rg1" style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
           <Field label="Tipo de Artículo" value={f.type} onChange={v=>set("type",v)} opts={typeOpts}/>
           <Field label="Categoría" value={f.category_id??""} onChange={v=>set("category_id",v===""?null:Number(v))} opts={catOpts}/>
         </div>
-        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+        <div className="rg1" style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
           <Field label="Unidad de Medida" value={f.unit} onChange={v=>set("unit",v)} opts={UNITS.includes(f.unit)?UNITS:[f.unit,...UNITS]}/>
           <Field label="Costo Unitario ($)" type="number" value={f.cost} onChange={v=>set("cost",Number(v))}/>
         </div>
@@ -507,7 +509,7 @@ function InvModal({editing,items,locations,onSave,onClose}){
           </select>
         </div>
         <Field label="Ubicación" value={f.location_id} onChange={v=>set("location_id",Number(v))} opts={locations.map(l=>({v:l.id,l:l.name}))}/>
-        <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:10}}>
+        <div className="rg1" style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:10}}>
           <Field label="Cantidad Total" type="number" value={f.qty} onChange={v=>set("qty",Number(v))}/>
           <Field label="Stock Mínimo" type="number" value={f.min_qty} onChange={v=>set("min_qty",Number(v))}/>
           <Field label="Reservado" type="number" value={f.reserved} onChange={v=>set("reserved",Number(v))}/>
@@ -534,7 +536,7 @@ function OrderModal({editing,onSave,onClose}){
   return(
     <Modal title={f.id?"Editar Orden de Trabajo":"Nueva Orden de Trabajo"} onClose={onClose} width={520}>
       <div style={{display:"flex",flexDirection:"column",gap:12}}>
-        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+        <div className="rg1" style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
           <Field label="Cliente *" value={f.client} onChange={v=>set("client",v)}/>
           <Field label="Fecha" type="date" value={f.date} onChange={v=>set("date",v)}/>
         </div>
@@ -542,7 +544,7 @@ function OrderModal({editing,onSave,onClose}){
         <Field label="Estado" value={f.status} onChange={v=>set("status",v)} opts={stOpts}/>
         <div style={{background:"#FAFAF9",borderRadius:10,padding:14}}>
           <p style={{fontSize:12,fontWeight:700,color:C.muted,marginBottom:10}}>Estructura de Costos (Costeo por Orden de Producción)</p>
-          <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:10,marginBottom:10}}>
+          <div className="rg1" style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:10,marginBottom:10}}>
             <Field label="Materiales ($)" type="number" value={f.mat} onChange={v=>set("mat",Number(v))}/>
             <Field label="Mano de Obra ($)" type="number" value={f.labor} onChange={v=>set("labor",Number(v))}/>
             <Field label="CIF / Gastos Ind. ($)" type="number" value={f.overhead} onChange={v=>set("overhead",Number(v))}/>
@@ -579,7 +581,10 @@ const NAV = [
 const TITLES = {dashboard:"Dashboard",items:"Artículos",inventory:"Inventario",orders:"Órdenes de Trabajo",costing:"Costeo & Márgenes",reports:"Reportes"};
 
 export default function App({ itemsData=[], invData=[], ordersData=[], categoriesData=[], locationsData=[] }){
+  const user    = usePage().props.auth.user;
+  const isAdmin = user.role === "admin";
   const [view,   setView]   = useState("dashboard");
+  const [menuOpen, setMenuOpen] = useState(false);
   // Los datos se leen siempre de las props del servidor (Inertia). Antes se copiaban a
   // useState, que solo usa el valor inicial, y la pantalla no mostraba lo recién guardado.
   // La copia [...] evita modificar el arreglo original al ordenar.
@@ -649,10 +654,31 @@ export default function App({ itemsData=[], invData=[], ordersData=[], categorie
         select:focus,input:focus { border-color:#D97706 !important; outline:none; }
         ::-webkit-scrollbar { width:4px; }
         ::-webkit-scrollbar-thumb { background:#D97706; border-radius:2px; }
+        /* Barra superior y menú lateral deslizable solo en pantallas pequeñas */
+        .mbar,.sbov { display:none; }
+        @media (max-width:768px) {
+          .sb { position:fixed !important; left:0; top:0; z-index:120; transform:translateX(-100%); transition:transform .2s; }
+          .sb.open { transform:none; }
+          .sbov { display:block; position:fixed; inset:0; background:rgba(0,0,0,.5); z-index:110; }
+          .mbar { display:flex; position:fixed; top:0; left:0; right:0; height:52px; background:#1C1917;
+                  color:#FAF7F4; align-items:center; gap:12px; padding:0 14px; z-index:100; }
+          .mainp { padding:68px 14px 24px !important; }
+          .rg1 { grid-template-columns:minmax(0,1fr) !important; }
+          .rg2 { grid-template-columns:repeat(2,minmax(0,1fr)) !important; }
+          .rg1 > *, .rg2 > * { min-width:0; }
+        }
       `}</style>
 
+      {/* ── BARRA SUPERIOR (móvil) ── */}
+      <div className="mbar">
+        <button onClick={()=>setMenuOpen(true)} aria-label="Abrir menú" style={{background:"none",border:"none",color:"#FAF7F4",cursor:"pointer",display:"flex"}}><Menu size={22}/></button>
+        <span style={{fontWeight:700,fontSize:15}}>CarpiSys</span>
+        <span style={{marginLeft:"auto",fontSize:12,color:"#A8A29E"}}>{TITLES[view]}</span>
+      </div>
+      {menuOpen && <div className="sbov" onClick={()=>setMenuOpen(false)}/>}
+
       {/* ── SIDEBAR ── */}
-      <aside style={{width:224,background:C.sidebar,display:"flex",flexDirection:"column",position:"sticky",top:0,height:"100vh",flexShrink:0}}>
+      <aside className={"sb"+(menuOpen?" open":"")} style={{width:224,background:C.sidebar,display:"flex",flexDirection:"column",position:"sticky",top:0,height:"100vh",flexShrink:0}}>
         <div style={{padding:"20px 16px 16px",borderBottom:"1px solid #292524"}}>
           <div style={{display:"flex",gap:10,alignItems:"center"}}>
             <div style={{width:34,height:34,background:C.amber,borderRadius:8,display:"flex",alignItems:"center",justifyContent:"center",fontSize:17}}>🪵</div>
@@ -666,7 +692,7 @@ export default function App({ itemsData=[], invData=[], ordersData=[], categorie
           {NAV.map(n=>{
             const active=view===n.id;
             return(
-              <button key={n.id} onClick={()=>setView(n.id)} style={{
+              <button key={n.id} onClick={()=>{setView(n.id);setMenuOpen(false);}} style={{
                 background:active?"#292524":"transparent",color:active?C.amber:"#A8A29E",
                 border:"none",cursor:"pointer",borderRadius:8,padding:"9px 12px",
                 display:"flex",alignItems:"center",gap:9,fontSize:13,
@@ -679,22 +705,36 @@ export default function App({ itemsData=[], invData=[], ordersData=[], categorie
               </button>
             );
           })}
+          {isAdmin&&(
+            <button onClick={()=>router.visit('/users')} style={{background:"transparent",color:"#A8A29E",
+              border:"none",cursor:"pointer",borderRadius:8,padding:"9px 12px",display:"flex",alignItems:"center",
+              gap:9,fontSize:13,textAlign:"left",width:"100%"}}>
+              <Users size={15}/>Usuarios
+            </button>
+          )}
         </nav>
-        <div style={{padding:"10px 14px",borderTop:"1px solid #292524"}}>
-          <p style={{fontSize:10,color:"#3C3A37",textAlign:"center",lineHeight:1.5}}>Taller de Investigación<br/>Sistemas Computacionales</p>
+        <div style={{padding:"12px 14px",borderTop:"1px solid #292524"}}>
+          <p style={{fontSize:12,fontWeight:700,color:"#FAF7F4",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{user.name}</p>
+          <p style={{fontSize:10,color:"#78716C",marginBottom:8}}>{isAdmin?"Administrador":"Operario"}</p>
+          <div style={{display:"flex",gap:6}}>
+            {[["Mi perfil",()=>router.visit('/profile')],["Salir",()=>router.post('/logout')]].map(([l,fn])=>(
+              <button key={l} onClick={fn} style={{flex:1,background:"#292524",color:"#D6D3D1",border:"none",cursor:"pointer",
+                borderRadius:6,padding:"6px 0",fontSize:11,fontWeight:600,fontFamily:"inherit"}}>{l}</button>
+            ))}
+          </div>
         </div>
       </aside>
 
       {/* ── MAIN ── */}
-      <main style={{flex:1,overflowY:"auto",padding:24,minWidth:0}}>
+      <main className="mainp" style={{flex:1,overflowY:"auto",padding:24,minWidth:0}}>
         <div style={{marginBottom:20}}>
           <h1 style={{fontSize:22,fontWeight:700,color:C.text}}>{TITLES[view]}</h1>
           <p style={{fontSize:12,color:C.muted,marginTop:2}}>Sistema de Inventario y Costeo · Carpintería Real Carranza</p>
         </div>
         {view==="dashboard" && <Dashboard items={items} inv={inv} orders={orders} setView={setView}/>}
-        {view==="items"     && <ItemsView items={items} inv={inv} onEdit={i=>{setEditing(i);setModal("item");}} onDelete={deleteItem} onNew={()=>{setEditing(null);setModal("item");}}/>}
-        {view==="inventory" && <InventoryView items={items} inv={inv} onNew={()=>{setEditing(null);setModal("inv");}}/>}
-        {view==="orders"    && <OrdersView orders={orders} onEdit={o=>{setEditing(o);setModal("order");}} onNew={()=>{setEditing(null);setModal("order");}} onStatus={changeStatus}/>}
+        {view==="items"     && <ItemsView canEdit={isAdmin} items={items} inv={inv} onEdit={i=>{setEditing(i);setModal("item");}} onDelete={deleteItem} onNew={()=>{setEditing(null);setModal("item");}}/>}
+        {view==="inventory" && <InventoryView canEdit={isAdmin} items={items} inv={inv} onNew={()=>{setEditing(null);setModal("inv");}}/>}
+        {view==="orders"    && <OrdersView canEdit={isAdmin} orders={orders} onEdit={o=>{setEditing(o);setModal("order");}} onNew={()=>{setEditing(null);setModal("order");}} onStatus={changeStatus}/>}
         {view==="costing"   && <CostingView orders={orders}/>}
         {view==="reports"   && <ReportsView items={items} inv={inv} orders={orders}/>}
       </main>

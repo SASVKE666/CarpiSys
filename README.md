@@ -1,58 +1,91 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# CarpiSys
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+Sistema web de inventario perpetuo, órdenes de trabajo y costeo para la Carpintería Real Carranza (Tepic, Nayarit).
+Proyecto Profesionalizante Avanzado · Sistemas Computacionales · UAN.
 
-## About Laravel
+**Stack:** Laravel 13 · Inertia 2 · React 18 · Tailwind 3 · Vite · MySQL (o SQLite para pruebas rápidas).
+Requiere **PHP 8.4 o superior**, Composer 2 y Node 20+.
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
-
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
-
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
-
-## Learning Laravel
-
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
-
-In addition, [Laracasts](https://laracasts.com) contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
-
-You can also watch bite-sized lessons with real-world projects on [Laravel Learn](https://laravel.com/learn), where you will be guided through building a Laravel application from scratch while learning PHP fundamentals.
-
-## Agentic Development
-
-Laravel's predictable structure and conventions make it ideal for AI coding agents like Claude Code, Cursor, and GitHub Copilot. Install [Laravel Boost](https://laravel.com/docs/ai) to supercharge your AI workflow:
+## Instalación
 
 ```bash
-composer require laravel/boost --dev
-
-php artisan boost:install
+git clone https://github.com/SASVKE666/CarpiSys.git
+cd CarpiSys
+composer install
+npm ci
+cp .env.example .env          # en Windows: copy .env.example .env
+php artisan key:generate
 ```
 
-Boost provides your agent 15+ tools and skills that help agents build Laravel applications while following best practices.
+Edita `.env` según la base de datos:
 
-## Contributing
+- **SQLite** (lo más simple): deja `DB_CONNECTION=sqlite` y crea el archivo vacío `database/database.sqlite`.
+- **MySQL** (Laragon): `DB_CONNECTION=mysql`, `DB_DATABASE=carpisys`, `DB_USERNAME=root`, `DB_PASSWORD=` (vacío en Laragon). Crea antes la base `carpisys`.
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+Luego:
 
-## Code of Conduct
+```bash
+php artisan migrate --seed
+php artisan carpisys:crear-usuario --rol=admin     # crea al dueño (pide nombre, correo y contraseña)
+npm run build
+```
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+Para desarrollar (recarga automática): `npm run dev` en una terminal y `php artisan serve` en otra.
 
-## Security Vulnerabilities
+> **No hay registro público.** Las cuentas las crea el administrador desde la pantalla **Usuarios**
+> o con `php artisan carpisys:crear-usuario`. Si la base ya tenía usuarios, la migración deja al primero como administrador.
+> Si existe un usuario de prueba (`test@example.com`), cámbiale la contraseña o desactívalo desde **Usuarios**.
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+## Roles
 
-## License
+| | Operario | Administrador |
+|---|:-:|:-:|
+| Ver dashboard, artículos, inventario, órdenes, costeo y reportes | ✔ | ✔ |
+| Registrar movimientos de inventario (existe en el servidor; la pantalla para hacerlo aún no) | ✔ | ✔ |
+| Cambiar el estado de una orden y registrar tiempos muertos | ✔ | ✔ |
+| Crear, editar o desactivar artículos | | ✔ |
+| Crear y editar órdenes (cliente, precios, costos) | | ✔ |
+| Ajustar existencias directamente | | ✔ |
+| Crear usuarios, cambiar roles, desactivar, restablecer contraseñas | | ✔ |
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+Los permisos se definen en `routes/web.php` (por ruta) y `WorkOrderController@update` (qué puede cambiar un operario).
+
+## Usarlo desde varios dispositivos en la red local (celulares, tabletas, otras PCs)
+
+El sistema corre en **una PC del taller** (el servidor) y los demás dispositivos lo abren en el navegador
+mientras estén en el **mismo WiFi**. No necesitan instalar nada ni internet.
+
+1. **En la PC servidor**, en `.env` pon `APP_ENV=production` y `APP_DEBUG=false`, y ejecuta `npm run build` (una vez, y de nuevo tras cada actualización).
+2. **Arranca el servidor** con `scripts\iniciar-red-local.bat` (doble clic). Muestra las direcciones, por ejemplo `http://192.168.1.50:8000`.
+   Debe quedar abierta esa ventana mientras se use el sistema.
+3. **Firewall de Windows:** la primera vez pregunta si permites `php.exe`; acepta en **redes privadas**. O bien, en una terminal de administrador:
+   `netsh advfirewall firewall add rule name="CarpiSys" dir=in action=allow protocol=TCP localport=8000 profile=private`
+4. **Dirección fija:** en el router, reserva una IP para la PC servidor (reserva DHCP) para que la dirección no cambie.
+5. **En el celular/tableta:** conecta al mismo WiFi, abre la dirección en Chrome e inicia sesión.
+   Con el menú del navegador → *Agregar a pantalla de inicio* queda un icono de acceso directo.
+
+Notas y límites:
+
+- La conexión es **HTTP sin cifrar** dentro de tu red. Usa WPA2/WPA3 con contraseña en el WiFi y **no abras puertos del router hacia internet**.
+- Por ser HTTP, el icono de pantalla de inicio es un acceso directo; no es una app instalable completa (eso exige HTTPS).
+- Si la PC servidor se apaga o se desconecta del WiFi, nadie puede entrar. El sistema no funciona sin conexión en los celulares.
+- `php artisan serve` es un servidor sencillo, suficiente para pocas personas a la vez. Con Laragon (Apache) también se puede publicar la carpeta `public`.
+- Si la interfaz se ve distinta a lo esperado en una red sin internet, es normal: la tipografía de Google Fonts no se descarga y se usa la del sistema.
+
+## Respaldos
+
+```bash
+php artisan carpisys:respaldo                              # guarda en storage/app/respaldos
+php artisan carpisys:respaldo --destino="E:\Respaldos"     # disco externo o carpeta de Google Drive
+php artisan carpisys:respaldo --conservar=30               # cuántos mantener (por defecto 14)
+```
+
+En Windows, `scripts\respaldo.bat "E:\Respaldos"` hace lo mismo y se puede programar en el **Programador de tareas**
+(por ejemplo, diario al cerrar el taller). Con MySQL usa `mysqldump`; si no lo encuentra, pasa la ruta con `--mysqldump="C:\laragon\bin\mysql\...\bin\mysqldump.exe"`.
+**Prueba restaurar un respaldo al menos una vez**: un respaldo que nunca se probó no es una garantía.
+
+## Pruebas
+
+```bash
+php artisan test
+```
