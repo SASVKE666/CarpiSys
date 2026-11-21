@@ -3,7 +3,9 @@ namespace App\Http\Controllers;
 
 use App\Models\Item;
 use App\Models\Category;
+use App\Services\InventoryService;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 
 class InventoryController extends Controller
@@ -29,19 +31,31 @@ class InventoryController extends Controller
         ]);
     }
 
-    public function movement(Request $request)
+    /**
+     * Entradas, salidas, mermas y devoluciones. El stock lo actualiza el observer de InventoryMovement.
+     * Solo el administrador puede fijar el costo de una entrada (eso actualiza el costo promedio).
+     */
+    public function movement(Request $request, InventoryService $inventory)
     {
         $data = $request->validate([
             'item_id'       => 'required|exists:items,id',
             'location_id'   => 'required|exists:locations,id',
-            'movement_type' => 'required|in:entrada,salida,ajuste,merma,traspaso,devolucion',
+            'movement_type' => ['required', Rule::in(InventoryService::TYPES)],
             'quantity'      => 'required|numeric|min:0.001',
             'unit_cost'     => 'nullable|numeric|min:0',
-            'notes'         => 'nullable|string',
+            'notes'         => 'nullable|string|max:500',
         ]);
-        $data['user_id'] = auth()->id();
 
-        \App\Models\InventoryMovement::create($data); // El observer actualiza stock
+        $user = $request->user();
+        $unitCost = ($user->isAdmin() && $data['movement_type'] === 'entrada' && isset($data['unit_cost']))
+            ? (float) $data['unit_cost']
+            : null;
+
+        $inventory->move(
+            $user, (int) $data['item_id'], (int) $data['location_id'], $data['movement_type'],
+            (float) $data['quantity'], $unitCost, $data['notes'] ?? null,
+        );
+
         return back()->with('success', 'Movimiento registrado.');
     }
 

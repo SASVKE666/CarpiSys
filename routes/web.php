@@ -6,6 +6,7 @@ use App\Http\Controllers\ItemController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\WorkOrderController;
+use App\Http\Controllers\WorkOrderCostController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -15,7 +16,10 @@ use Illuminate\Support\Facades\Route;
 | operario : ve el sistema, registra movimientos de inventario, cambia el estado
 |            de las órdenes y registra tiempos muertos.
 | admin    : además crea/edita/desactiva artículos, crea y edita órdenes (precios y
-|            costos), ajusta existencias directamente y administra usuarios.
+|            costos), ajusta existencias directamente, borra horas registradas y administra usuarios.
+|
+| Los operarios tampoco reciben datos financieros (costos, precios, márgenes, tarifas):
+| el filtro está en DashboardController, no solo en la interfaz.
 |
 | No hay registro público: las cuentas las crea el administrador (/users) o el
 | comando "php artisan carpisys:crear-usuario".
@@ -38,6 +42,14 @@ Route::middleware(['auth', 'verified', 'active'])->group(function () {
     Route::put('/work-orders/{workOrder}', [WorkOrderController::class, 'update'])->name('work-orders.update');
     Route::post('/work-orders/{workOrder}/idle-time', [WorkOrderController::class, 'idleTime'])
          ->name('work-orders.idle-time');
+
+    // Materiales (descuentan inventario) y horas de una orden; recalculan MD + MOD + CIF
+    Route::post('/work-orders/{workOrder}/materials', [WorkOrderCostController::class, 'addMaterial'])
+         ->name('work-orders.materials.store');
+    Route::delete('/work-orders/{workOrder}/materials/{material}', [WorkOrderCostController::class, 'removeMaterial'])
+         ->name('work-orders.materials.destroy');
+    Route::post('/work-orders/{workOrder}/labor', [WorkOrderCostController::class, 'addLabor'])
+         ->name('work-orders.labor.store');
 });
 
 // Solo administrador
@@ -45,6 +57,8 @@ Route::middleware(['auth', 'verified', 'active', 'role:admin'])->group(function 
     Route::resource('items', ItemController::class)->only(['store', 'update', 'destroy']);
     Route::post('/work-orders', [WorkOrderController::class, 'store'])->name('work-orders.store');
     Route::post('/inventory/stock', [InventoryController::class, 'saveStock'])->name('inventory.stock');
+    Route::delete('/work-orders/{workOrder}/labor/{labor}', [WorkOrderCostController::class, 'removeLabor'])
+         ->name('work-orders.labor.destroy');
 
     Route::get('/users', [UserController::class, 'index'])->name('users.index');
     Route::post('/users', [UserController::class, 'store'])->name('users.store');

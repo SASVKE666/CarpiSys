@@ -20,6 +20,9 @@ class InventoryMovement extends Model {
 
     // Actualiza el stock automáticamente al crear un movimiento
     protected static function booted(): void {
+        // $timestamps está desactivado, así que la fecha del movimiento se asigna aquí.
+        static::creating(fn (self $m) => $m->created_at ??= now());
+
         static::created(function (self $movement) {
             $stock = InventoryStock::firstOrCreate(
                 ['item_id' => $movement->item_id, 'location_id' => $movement->location_id],

@@ -45,9 +45,11 @@ class WorkOrderController extends Controller
             'labor_cost'     => 'nullable|numeric|min:0',
             'overhead_cost'  => 'nullable|numeric|min:0',
             'quoted_price'   => 'nullable|numeric|min:0',
+            'machine_hours'  => 'nullable|numeric|min:0',
             'notes'          => 'nullable|string',
         ]);
 
+        $data['machine_hours']  = $data['machine_hours']  ?? 0;
         $data['status']         = $data['status']         ?? 'pendiente';
         $data['materials_cost'] = $data['materials_cost'] ?? 0;
         $data['labor_cost']     = $data['labor_cost']     ?? 0;
@@ -73,6 +75,7 @@ class WorkOrderController extends Controller
             'labor_cost'     => 'sometimes|required|numeric|min:0',
             'overhead_cost'  => 'sometimes|required|numeric|min:0',
             'quoted_price'   => 'sometimes|required|numeric|min:0',
+            'machine_hours'  => 'sometimes|required|numeric|min:0',
             'notes'          => 'nullable|string',
         ]);
 
@@ -82,8 +85,20 @@ class WorkOrderController extends Controller
             abort_unless(array_keys($data) === ['status'], 403, 'Solo el administrador puede editar los datos de la orden.');
         }
 
+        // Con materiales u horas registrados, los costos los calcula el sistema: se ignoran los
+        // valores escritos a mano para que no pisen el cálculo.
+        $auto = $workOrder->usesAutoCosting();
+        if ($auto) {
+            unset($data['materials_cost'], $data['labor_cost'], $data['overhead_cost']);
+        }
+
         // Antes se llamaba a create(), lo que duplicaba la orden en cada edición.
         $workOrder->update($data);
+
+        // Cambiar las horas de máquina modifica el CIF de la orden.
+        if ($auto && array_key_exists('machine_hours', $data)) {
+            $workOrder->recalculateCosts();
+        }
 
         return redirect()->route('dashboard');
     }
