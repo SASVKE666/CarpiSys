@@ -24,6 +24,11 @@ const OUT = ["salida","merma"];
 const num = n => Number(n).toLocaleString("es-MX",{maximumFractionDigits:4});
 
 const stockOf = (inv,itemId,locId) => inv.find(r=>r.item_id===itemId && r.location_id===locId)?.qty ?? 0;
+// Ubicación con más existencias de un artículo (para preseleccionarla al sacar material)
+const bestLoc = (inv,itemId,locations) => {
+  const row = inv.filter(r=>r.item_id===itemId && r.qty>0).sort((a,b)=>b.qty-a.qty)[0];
+  return row ? row.location_id : (locations[0]?.id ?? "");
+};
 
 // ── REGISTRAR MOVIMIENTO DE INVENTARIO ───────────────────────────────────────
 export function MovementModal({items,inv,locations,isAdmin,onClose}){
@@ -50,7 +55,7 @@ export function MovementModal({items,inv,locations,isAdmin,onClose}){
       <div style={{display:"flex",flexDirection:"column",gap:12}}>
         <div>
           <label style={lbl}>Artículo *</label>
-          <select value={f.item_id} onChange={e=>set("item_id",Number(e.target.value))} style={inp}>
+          <select value={f.item_id} onChange={e=>{const id=Number(e.target.value); setF(p=>({...p,item_id:id,...(p.movement_type==="entrada"?{}:{location_id:bestLoc(inv,id,locations)})}));}} style={inp}>
             {items.map(i=><option key={i.id} value={i.id}>{i.sku} — {i.name}</option>)}
           </select>
         </div>
@@ -136,7 +141,7 @@ function Section({title,children,right}){
 export function OrderDetailModal({order,items,inv,locations,isAdmin,hasOverheadRates,onClose}){
   const today=new Date().toISOString().slice(0,10);
   const usable=items.filter(i=>i.type!=="herramienta");     // las herramientas no se consumen
-  const [mat,setMat]=useState({item_id:usable[0]?.id??"",location_id:locations[0]?.id??"",quantity:"",notes:""});
+  const [mat,setMat]=useState({item_id:usable[0]?.id??"",location_id:usable[0]?bestLoc(inv,usable[0].id,locations):(locations[0]?.id??""),quantity:"",notes:""});
   const [lab,setLab]=useState({hours:"",work_date:today,task_description:"",worker_name:"",hourly_rate:""});
   const [matErr,setMatErr]=useState({});
   const [labErr,setLabErr]=useState({});
@@ -231,7 +236,7 @@ export function OrderDetailModal({order,items,inv,locations,isAdmin,hasOverheadR
               <div className="rg1" style={{display:"grid",gridTemplateColumns:"2fr 1.3fr 1fr",gap:10}}>
                 <div>
                   <label style={lbl}>Material</label>
-                  <select value={mat.item_id} onChange={e=>setMat(p=>({...p,item_id:Number(e.target.value)}))} style={inp}>
+                  <select value={mat.item_id} onChange={e=>{const id=Number(e.target.value); setMat(p=>({...p,item_id:id,location_id:bestLoc(inv,id,locations)}));}} style={inp}>
                     {usable.map(i=><option key={i.id} value={i.id}>{i.sku} — {i.name}</option>)}
                   </select>
                 </div>
