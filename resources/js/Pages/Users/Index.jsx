@@ -7,7 +7,7 @@ const ROLE_LABEL = { admin: 'Administrador', operario: 'Operario' };
 
 function NewUserForm({ roles }) {
     const { data, setData, post, processing, errors, reset } = useForm({
-        name: '', email: '', password: '', role: 'operario',
+        name: '', email: '', password: '', role: 'operario', hourly_rate: '',
     });
 
     const submit = (e) => {
@@ -42,6 +42,13 @@ function NewUserForm({ roles }) {
                 <InputError message={errors.role} className="mt-1" />
             </div>
             <div className="sm:col-span-2">
+                <label className="text-sm font-medium text-gray-700">Tarifa por hora ($) — para costear su mano de obra</label>
+                <input type="number" step="any" inputMode="decimal" className={field} value={data.hourly_rate}
+                       onFocus={(e) => e.target.select()} onChange={(e) => setData('hourly_rate', e.target.value)} />
+                <InputError message={errors.hourly_rate} className="mt-1" />
+                <p className="mt-1 text-xs text-gray-500">Solo la ve el administrador. Sin tarifa, esa persona no puede registrar horas.</p>
+            </div>
+            <div className="sm:col-span-2">
                 <button
                     type="submit"
                     disabled={processing}
@@ -56,6 +63,7 @@ function NewUserForm({ roles }) {
 
 function UserRow({ user, roles, isSelf }) {
     const [pwd, setPwd] = useState('');
+    const [rate, setRate] = useState(user.hourly_rate ?? '');
     const { errors } = usePage().props;
     const save = (payload) => router.put(route('users.update', user.id), payload, { preserveScroll: true });
 
@@ -107,8 +115,19 @@ function UserRow({ user, roles, isSelf }) {
                     Restablecer
                 </button>
             </div>
-            {(errors.role || errors.is_active || errors.password) && (
-                <p className="text-sm text-red-600">{errors.role || errors.is_active || errors.password}</p>
+            <div className="flex flex-wrap items-center gap-2">
+                <span className="text-sm text-gray-600">Tarifa por hora $</span>
+                <input type="number" step="any" inputMode="decimal" value={rate} onFocus={(e) => e.target.select()}
+                       onChange={(e) => setRate(e.target.value)} className="w-28 rounded-md border-gray-300 text-sm" />
+                <button type="button" disabled={String(rate) === String(user.hourly_rate ?? '')}
+                        onClick={() => save({ hourly_rate: rate })}
+                        className="rounded-md bg-gray-100 px-3 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-200 disabled:opacity-40">
+                    Guardar tarifa
+                </button>
+                {user.hourly_rate == null && <span className="text-xs text-amber-700">Sin tarifa: no puede registrar horas.</span>}
+            </div>
+            {(errors.role || errors.is_active || errors.password || errors.hourly_rate) && (
+                <p className="text-sm text-red-600">{errors.role || errors.is_active || errors.password || errors.hourly_rate}</p>
             )}
         </li>
     );
@@ -147,7 +166,7 @@ export default function UsersIndex({ users, roles }) {
 
                     <p className="px-1 text-xs text-gray-500">
                         Operario: consulta, registra movimientos de inventario, cambia el estado de las órdenes y registra
-                        tiempos muertos. Administrador: además edita artículos, órdenes (precios y costos), existencias y usuarios.
+                        tiempos muertos; no ve costos, precios ni márgenes. Administrador: además edita artículos, órdenes (precios y costos), existencias, tasas CIF y usuarios.
                     </p>
                 </div>
             </div>

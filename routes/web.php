@@ -3,6 +3,7 @@
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\InventoryController;
 use App\Http\Controllers\ItemController;
+use App\Http\Controllers\OverheadRateController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\WorkOrderController;
@@ -59,6 +60,10 @@ Route::middleware(['auth', 'verified', 'active', 'role:admin'])->group(function 
     Route::post('/inventory/stock', [InventoryController::class, 'saveStock'])->name('inventory.stock');
     Route::delete('/work-orders/{workOrder}/labor/{labor}', [WorkOrderCostController::class, 'removeLabor'])
          ->name('work-orders.labor.destroy');
+
+    Route::get('/overhead-rates', [OverheadRateController::class, 'index'])->name('overhead-rates.index');
+    Route::post('/overhead-rates', [OverheadRateController::class, 'store'])->name('overhead-rates.store');
+    Route::put('/overhead-rates/{overheadRate}', [OverheadRateController::class, 'update'])->name('overhead-rates.update');
 
     Route::get('/users', [UserController::class, 'index'])->name('users.index');
     Route::post('/users', [UserController::class, 'store'])->name('users.store');

@@ -32,6 +32,14 @@ export default function AuthenticatedLayout({ header, children }) {
                                 </NavLink>
                                 {user.role === 'admin' && (
                                     <NavLink
+                                        href={route('overhead-rates.index')}
+                                        active={route().current('overhead-rates.*')}
+                                    >
+                                        Tasas CIF
+                                    </NavLink>
+                                )}
+                                {user.role === 'admin' && (
+                                    <NavLink
                                         href={route('users.index')}
                                         active={route().current('users.*')}
                                     >
@@ -142,6 +150,14 @@ export default function AuthenticatedLayout({ header, children }) {
                         >
                             Dashboard
                         </ResponsiveNavLink>
+                        {user.role === 'admin' && (
+                            <ResponsiveNavLink
+                                href={route('overhead-rates.index')}
+                                active={route().current('overhead-rates.*')}
+                            >
+                                Tasas CIF
+                            </ResponsiveNavLink>
+                        )}
                         {user.role === 'admin' && (
                             <ResponsiveNavLink
                                 href={route('users.index')}

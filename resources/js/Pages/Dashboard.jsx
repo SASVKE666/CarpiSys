@@ -1,94 +1,14 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { router, usePage } from '@inertiajs/react';
 import { LayoutDashboard, Package, Archive, FileText, DollarSign, BarChart2,
          AlertTriangle, Plus, Pencil, Trash2, X, Layers, Wrench,
-         ShoppingBag, Zap, TrendingUp, CheckCircle, Menu, Users } from "lucide-react";
+         ShoppingBag, Zap, TrendingUp, CheckCircle, Menu, Users, Percent, ArrowLeftRight, ClipboardList } from "lucide-react";
 
-// ── COLOR SYSTEM ──────────────────────────────────────────────────────────────
-const C = {
-  bg:"#FAF7F4", card:"#FFFFFF", sidebar:"#1C1917", border:"#E7E5E4",
-  amber:"#D97706", amberBg:"#FEF3C7", text:"#1C1917", muted:"#78716C", faint:"#A8A29E",
-  green:"#059669", greenBg:"#D1FAE5", red:"#DC2626", redBg:"#FEE2E2",
-  yellow:"#B45309", yellowBg:"#FEF3C7", blue:"#1D4ED8", blueBg:"#DBEAFE",
-  purple:"#6D28D9", purpleBg:"#EDE9FE", teal:"#0E7490", tealBg:"#CFFAFE",
-};
-const ITEM_TYPES = {
-  materia_prima:{ label:"Materia Prima", Icon:Layers,      col:C.amber,  bg:C.amberBg  },
-  herramienta:  { label:"Herramienta",   Icon:Wrench,      col:C.purple, bg:C.purpleBg },
-  producto:     { label:"Producto",      Icon:ShoppingBag, col:C.green,  bg:C.greenBg  },
-  consumible:   { label:"Consumible",    Icon:Zap,         col:C.teal,   bg:C.tealBg   },
-};
-const ORDER_STATUS = {
-  pendiente: { label:"Pendiente",  col:C.yellow, bg:C.yellowBg },
-  en_proceso:{ label:"En proceso", col:C.blue,   bg:C.blueBg   },
-  pausada:   { label:"Pausada",    col:C.muted,  bg:"#F5F4F2"  },
-  completada:{ label:"Completada", col:C.green,  bg:C.greenBg  },
-  cancelada: { label:"Cancelada",  col:C.red,    bg:C.redBg    },
-};
-// Si llega un estado desconocido, se muestra tal cual en vez de romper la pantalla.
-const statusOf = st => ORDER_STATUS[st] ?? { label:String(st), col:C.muted, bg:"#F5F4F2" };
-const UNITS = ["pieza","metro","m²","kg","litro","lata","caja","par","rollo","galón","paquete","metro lineal"];
-
-// ── UTILS ─────────────────────────────────────────────────────────────────────
-const $m = n=>`$${Number(n).toLocaleString("es-MX",{minimumFractionDigits:0})}`;
-
-// ── STYLE SHORTCUTS ───────────────────────────────────────────────────────────
-const card = {background:C.card,borderRadius:12,border:`1px solid ${C.border}`,padding:"18px 20px"};
-const inp  = {padding:"8px 12px",borderRadius:8,border:`1.5px solid ${C.border}`,fontSize:13,color:C.text,width:"100%",background:"#fff",fontFamily:"inherit",boxSizing:"border-box"};
-const lbl  = {fontSize:12,fontWeight:600,color:C.muted,display:"block",marginBottom:4};
-const th   = {textAlign:"left",fontSize:11,fontWeight:700,color:C.muted,padding:"10px 14px",textTransform:"uppercase",letterSpacing:.5,borderBottom:`1px solid ${C.border}`,background:"#FAFAF9"};
-const td   = {padding:"11px 14px",borderBottom:`1px solid #F8F7F6`};
-
-// ── ATOMS ─────────────────────────────────────────────────────────────────────
-const Tag  = ({label,col,bg})=><span style={{background:bg,color:col,fontSize:11,fontWeight:700,padding:"2px 9px",borderRadius:99,whiteSpace:"nowrap"}}>{label}</span>;
-
-function Btn({label,onClick,secondary,danger,small,Icon}){
-  const bg=danger?C.redBg:secondary?"#F5F4F2":C.amber;
-  const cl=danger?C.red:secondary?C.muted:"#fff";
-  return(
-    <button onClick={onClick} style={{background:bg,color:danger?C.red:secondary?C.muted:"#fff",border:"none",cursor:"pointer",
-      borderRadius:8,padding:small?"5px 11px":"8px 16px",fontSize:small?11:13,fontWeight:700,fontFamily:"inherit",
-      display:"flex",alignItems:"center",gap:5,whiteSpace:"nowrap"}}>
-      {Icon&&<Icon size={13}/>}{label}
-    </button>
-  );
-}
-
-function Field({label,type="text",value,onChange,opts}){
-  return(
-    <div>
-      <label style={lbl}>{label}</label>
-      {opts
-        ? <select value={value} onChange={e=>onChange(e.target.value)} style={inp}>
-            {opts.map(o=>{const v=o.v??o, l=o.l??o; return <option key={v} value={v}>{l}</option>;})}
-          </select>
-        : <input type={type} value={value} onChange={e=>onChange(e.target.value)} style={inp}
-            // En campos numéricos, al hacer clic se selecciona todo el contenido (así el "0" se reemplaza al escribir).
-            // El setTimeout evita que el navegador deshaga la selección al soltar el clic.
-            onFocus={type==="number" ? e=>{const t=e.target; setTimeout(()=>t.select(),0);} : undefined}
-            inputMode={type==="number" ? "decimal" : undefined}/>}
-    </div>
-  );
-}
-
-function Modal({title,onClose,children,width=500}){
-  return(
-    <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.5)",zIndex:130,overflowY:"auto",
-      display:"flex",alignItems:"flex-start",justifyContent:"center",
-      padding:"28px 16px",boxSizing:"border-box"}}>
-      <div style={{background:C.card,borderRadius:14,width:"100%",maxWidth:width,border:`1px solid ${C.border}`}}>
-        <div style={{padding:"15px 20px",borderBottom:`1px solid ${C.border}`,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-          <p style={{fontSize:16,fontWeight:700,color:C.text,margin:0}}>{title}</p>
-          <button onClick={onClose} style={{background:"none",border:"none",cursor:"pointer",color:C.muted}}><X size={18}/></button>
-        </div>
-        <div style={{padding:20}}>{children}</div>
-      </div>
-    </div>
-  );
-}
+import { MovementModal, MovementsTable, OrderDetailModal } from "../Components/Costeo";
+import { C, ITEM_TYPES, ORDER_STATUS, statusOf, UNITS, $m, card, inp, lbl, th, td, Tag, Btn, Field, Modal } from "../Components/ui";
 
 // ── DASHBOARD ─────────────────────────────────────────────────────────────────
-function Dashboard({items,inv,orders,setView}){
+function Dashboard({items,inv,orders,setView,isAdmin,movements,myHours}){
   const low   = inv.filter(r=>r.qty<=r.min_qty);
   const val   = inv.reduce((s,r)=>{const i=items.find(x=>x.id===r.item_id);return s+(i?i.cost*r.qty:0);},0);
   const comp  = orders.filter(o=>o.status==="completada");
@@ -96,12 +16,21 @@ function Dashboard({items,inv,orders,setView}){
   const cost  = comp.reduce((s,o)=>s+Number(o.mat)+Number(o.labor)+Number(o.overhead),0);
   const mrg   = rev===0?"0.0":((rev-cost)/rev*100).toFixed(1);
 
-  const kpis = [
-    {label:"Valor en Inventario",  val:$m(val),  sub:`${inv.length} registros activos`,       accent:C.amber},
-    {label:"Órdenes Activas",      val:orders.filter(o=>o.status==="en_proceso").length,
-                                   sub:`${orders.filter(o=>o.status==="pendiente").length} pendientes`, accent:C.blue},
-    {label:"Artículos Stock Bajo", val:low.length,sub:low.length?"Requieren reabasto":"Sin alertas", accent:low.length?C.red:C.green},
-    {label:"Margen Promedio OTs",  val:`${mrg}%`, sub:`${comp.length} órdenes completadas`,   accent:C.green},
+  const hoy = new Date().toLocaleDateString("sv-SE");   // AAAA-MM-DD en hora local
+  const movsHoy = movements.filter(m=>m.date?.startsWith(hoy)).length;
+  const activas = {label:"Órdenes Activas", val:orders.filter(o=>o.status==="en_proceso").length,
+                   sub:`${orders.filter(o=>o.status==="pendiente").length} pendientes`, accent:C.blue};
+  const bajo    = {label:"Artículos Stock Bajo", val:low.length, sub:low.length?"Requieren reabasto":"Sin alertas", accent:low.length?C.red:C.green};
+
+  // Los operarios no ven importes: el servidor ni siquiera se los envía.
+  const kpis = isAdmin ? [
+    {label:"Valor en Inventario", val:$m(val), sub:`${inv.length} registros activos`, accent:C.amber},
+    activas, bajo,
+    {label:"Margen Promedio OTs", val:`${mrg}%`, sub:`${comp.length} órdenes completadas`, accent:C.green},
+  ] : [
+    activas, bajo,
+    {label:"Movimientos Hoy", val:movsHoy, sub:"entradas, salidas y mermas", accent:C.amber},
+    {label:"Mis Horas Hoy", val:`${myHours.toLocaleString("es-MX",{maximumFractionDigits:2})} h`, sub:"registradas a tu nombre", accent:C.green},
   ];
 
   return(
@@ -126,7 +55,7 @@ function Dashboard({items,inv,orders,setView}){
           </div>
           <div style={{overflowX:"auto"}}>
           <table style={{width:"100%",borderCollapse:"collapse",minWidth:420}}>
-            <thead><tr>{["OT","Cliente","Estado","Cotizado"].map(h=><th key={h} style={th}>{h}</th>)}</tr></thead>
+            <thead><tr>{["OT","Cliente","Estado",...(isAdmin?["Cotizado"]:[])].map(h=><th key={h} style={th}>{h}</th>)}</tr></thead>
             <tbody>
               {orders.slice(0,4).map(o=>{
                 const s=statusOf(o.status);
@@ -135,7 +64,7 @@ function Dashboard({items,inv,orders,setView}){
                     <td style={{...td,fontSize:11,fontWeight:700,color:C.amber,fontFamily:"monospace"}}>{o.code}</td>
                     <td style={{...td,fontSize:12,fontWeight:600,color:C.text}}>{o.client}<br/><span style={{fontSize:10,color:C.faint}}>{o.desc}</span></td>
                     <td style={td}><Tag label={s.label} col={s.col} bg={s.bg}/></td>
-                    <td style={{...td,fontSize:13,fontWeight:700,color:C.text}}>{$m(o.quoted)}</td>
+                    {isAdmin&&<td style={{...td,fontSize:13,fontWeight:700,color:C.text}}>{$m(o.quoted)}</td>}
                   </tr>
                 );
               })}
@@ -183,7 +112,7 @@ function Dashboard({items,inv,orders,setView}){
                 <t.Icon size={18} color={t.col}/>
                 <p style={{fontSize:22,fontWeight:700,color:t.col,margin:"6px 0 2px"}}>{cnt}</p>
                 <p style={{fontSize:11,fontWeight:700,color:t.col}}>{t.label}</p>
-                <p style={{fontSize:11,color:t.col,opacity:.8,marginTop:2}}>{$m(v)} en stock</p>
+                {isAdmin&&<p style={{fontSize:11,color:t.col,opacity:.8,marginTop:2}}>{$m(v)} en stock</p>}
               </div>
             );
           })}
@@ -215,7 +144,7 @@ function ItemsView({items,inv,onEdit,onDelete,onNew,canEdit}){
       </div>
       <div style={{...card,padding:0,overflowX:"auto"}}>
         <table style={{width:"100%",borderCollapse:"collapse",minWidth:560}}>
-          <thead><tr>{["SKU","Nombre","Tipo","Categoría","Unidad","Costo Unit.","Stock",""].map(h=><th key={h} style={th}>{h}</th>)}</tr></thead>
+          <thead><tr>{["SKU","Nombre","Tipo","Categoría","Unidad",...(canEdit?["Costo Unit."]:[]),"Stock",""].map(h=><th key={h} style={th}>{h}</th>)}</tr></thead>
           <tbody>
             {filtered.map(item=>{
               const stk=stockFor(item.id); const low=stk&&stk.qty<=stk.min_qty; const t=ITEM_TYPES[item.type];
@@ -226,7 +155,7 @@ function ItemsView({items,inv,onEdit,onDelete,onNew,canEdit}){
                   <td style={td}><Tag label={t.label} col={t.col} bg={t.bg}/></td>
                   <td style={{...td,fontSize:12,color:C.muted}}>{item.category}</td>
                   <td style={{...td,fontSize:12,color:C.muted}}>{item.unit}</td>
-                  <td style={{...td,fontSize:13,fontWeight:700,color:C.text}}>{item.cost>0?$m(item.cost):"—"}</td>
+                  {canEdit&&<td style={{...td,fontSize:13,fontWeight:700,color:C.text}}>{item.cost>0?$m(item.cost):"—"}</td>}
                   <td style={td}>{stk?<span style={{background:low?C.redBg:C.greenBg,color:low?C.red:C.green,padding:"3px 9px",borderRadius:99,fontSize:11,fontWeight:700}}>{stk.qty} {item.unit}</span>:<span style={{color:C.faint,fontSize:11}}>Sin registro</span>}</td>
                   <td style={{...td,textAlign:"right"}}>
                     {canEdit&&<div style={{display:"flex",gap:6,justifyContent:"flex-end"}}>
@@ -237,7 +166,7 @@ function ItemsView({items,inv,onEdit,onDelete,onNew,canEdit}){
                 </tr>
               );
             })}
-            {!filtered.length&&<tr><td colSpan={8} style={{textAlign:"center",padding:32,color:C.faint,fontSize:13}}>No se encontraron artículos.</td></tr>}
+            {!filtered.length&&<tr><td colSpan={canEdit?8:7} style={{textAlign:"center",padding:32,color:C.faint,fontSize:13}}>No se encontraron artículos.</td></tr>}
           </tbody>
         </table>
       </div>
@@ -246,7 +175,7 @@ function ItemsView({items,inv,onEdit,onDelete,onNew,canEdit}){
 }
 
 // ── INVENTORY VIEW ────────────────────────────────────────────────────────────
-function InventoryView({items,inv,onNew,canEdit}){
+function InventoryView({items,inv,onNew,onMove,movements,canEdit}){
   const low=inv.filter(r=>r.qty<=r.min_qty);
   return(
     <div style={{display:"flex",flexDirection:"column",gap:14}}>
@@ -256,7 +185,10 @@ function InventoryView({items,inv,onNew,canEdit}){
           <span style={{fontSize:13,color:C.red,fontWeight:700}}>{low.length} artículo(s) con stock menor al mínimo — se requiere reabasto.</span>
         </div>
       )}
-      {canEdit&&<div style={{display:"flex",justifyContent:"flex-end"}}><Btn label="Agregar Registro" Icon={Plus} onClick={onNew}/></div>}
+      <div style={{display:"flex",justifyContent:"flex-end",gap:8,flexWrap:"wrap"}}>
+        {canEdit&&<Btn secondary label="Ajustar existencias" Icon={Pencil} onClick={onNew}/>}
+        <Btn label="Registrar movimiento" Icon={ArrowLeftRight} onClick={onMove}/>
+      </div>
       <div style={{...card,padding:0,overflowX:"auto"}}>
         <table style={{width:"100%",borderCollapse:"collapse",minWidth:560}}>
           <thead><tr>{["Artículo","Tipo","Ubicación","Total","Disponible","Reservado","Stock Mín.","Estado"].map(h=><th key={h} style={th}>{h}</th>)}</tr></thead>
@@ -284,12 +216,13 @@ function InventoryView({items,inv,onNew,canEdit}){
           </tbody>
         </table>
       </div>
+      <MovementsTable movements={movements} isAdmin={canEdit}/>
     </div>
   );
 }
 
 // ── ORDERS VIEW ───────────────────────────────────────────────────────────────
-function OrdersView({orders,onEdit,onNew,onStatus,canEdit}){
+function OrdersView({orders,onEdit,onNew,onStatus,onDetail,canEdit}){
   return(
     <div style={{display:"flex",flexDirection:"column",gap:14}}>
       {canEdit&&<div style={{display:"flex",justifyContent:"flex-end"}}><Btn label="Nueva Orden" Icon={Plus} onClick={onNew}/></div>}
@@ -317,10 +250,16 @@ function OrdersView({orders,onEdit,onNew,onStatus,canEdit}){
                   style={{...inp,width:"auto",fontSize:11,padding:"5px 8px"}}>
                   {Object.entries(ORDER_STATUS).map(([v,x])=><option key={v} value={v}>{x.label}</option>)}
                 </select>
+                <Btn small label="Materiales y horas" Icon={ClipboardList} onClick={()=>onDetail(o.id)}/>
                 {canEdit&&<Btn small secondary label="Editar" Icon={Pencil} onClick={()=>onEdit(o)}/>}
               </div>
             </div>
-            <div className="rg2" style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:8,marginTop:14,paddingTop:14,borderTop:`1px solid ${C.border}`}}>
+            {!canEdit&&(
+              <p style={{fontSize:12,color:C.muted,marginTop:12,paddingTop:12,borderTop:`1px solid ${C.border}`}}>
+                {o.materials.length} material(es) · {o.labor_records.reduce((a,l)=>a+l.hours,0).toLocaleString("es-MX",{maximumFractionDigits:2})} h registradas
+              </p>
+            )}
+            {canEdit&&<div className="rg2" style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:8,marginTop:14,paddingTop:14,borderTop:`1px solid ${C.border}`}}>
               {[{l:"Materiales",v:$m(o.mat),c:C.amber},{l:"Mano de Obra",v:$m(o.labor),c:C.purple},
                 {l:"Gastos Ind.",v:$m(o.overhead),c:C.teal},{l:"Costo Total",v:$m(cost),c:C.text},
                 {l:"Margen",v:`${margin}%`,c:profit>=0?C.green:C.red}].map(x=>(
@@ -329,7 +268,7 @@ function OrdersView({orders,onEdit,onNew,onStatus,canEdit}){
                   <p style={{fontSize:16,fontWeight:700,color:x.c,marginTop:2}}>{x.v}</p>
                 </div>
               ))}
-            </div>
+            </div>}
           </div>
         );
       })}
@@ -529,7 +468,7 @@ function InvModal({editing,items,locations,onSave,onClose}){
 
 // ── ORDER MODAL ───────────────────────────────────────────────────────────────
 function OrderModal({editing,onSave,onClose}){
-  const blank={client:"",desc:"",status:"pendiente",date:new Date().toISOString().slice(0,10),mat:0,labor:0,overhead:0,quoted:0};
+  const blank={client:"",desc:"",status:"pendiente",date:new Date().toISOString().slice(0,10),mat:0,labor:0,overhead:0,quoted:0,machine_hours:0,auto:false};
   const [f,setF]=useState(editing||blank);
   const set=(k,v)=>setF(p=>({...p,[k]:v}));
   const totalCost=Number(f.mat)+Number(f.labor)+Number(f.overhead);
@@ -548,10 +487,18 @@ function OrderModal({editing,onSave,onClose}){
         <Field label="Estado" value={f.status} onChange={v=>set("status",v)} opts={stOpts}/>
         <div style={{background:"#FAFAF9",borderRadius:10,padding:14}}>
           <p style={{fontSize:12,fontWeight:700,color:C.muted,marginBottom:10}}>Estructura de Costos (Costeo por Orden de Producción)</p>
-          <div className="rg1" style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:10,marginBottom:10}}>
-            <Field label="Materiales ($)" type="number" value={f.mat} onChange={v=>set("mat",Number(v))}/>
-            <Field label="Mano de Obra ($)" type="number" value={f.labor} onChange={v=>set("labor",Number(v))}/>
-            <Field label="CIF / Gastos Ind. ($)" type="number" value={f.overhead} onChange={v=>set("overhead",Number(v))}/>
+          {f.auto
+            ? <div style={{background:C.tealBg,color:C.teal,borderRadius:8,padding:"10px 12px",fontSize:12,marginBottom:10,lineHeight:1.5}}>
+                Los costos de esta orden se calculan solos con los materiales y horas registrados
+                (botón «Materiales y horas»): materiales <strong>{$m(f.mat)}</strong> · mano de obra <strong>{$m(f.labor)}</strong> · CIF <strong>{$m(f.overhead)}</strong>.
+              </div>
+            : <div className="rg1" style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:10,marginBottom:10}}>
+                <Field label="Materiales ($)" type="number" value={f.mat} onChange={v=>set("mat",Number(v))}/>
+                <Field label="Mano de Obra ($)" type="number" value={f.labor} onChange={v=>set("labor",Number(v))}/>
+                <Field label="CIF / Gastos Ind. ($)" type="number" value={f.overhead} onChange={v=>set("overhead",Number(v))}/>
+              </div>}
+          <div style={{marginBottom:10}}>
+            <Field label="Horas de máquina (para tasas CIF por hora máquina)" type="number" value={f.machine_hours??0} onChange={v=>set("machine_hours",Number(v))}/>
           </div>
           <Field label="Precio Cotizado al Cliente ($)" type="number" value={f.quoted} onChange={v=>set("quoted",Number(v))}/>
           {/* Live margin preview */}
@@ -574,6 +521,8 @@ function OrderModal({editing,onSave,onClose}){
 }
 
 // ── MAIN APP ──────────────────────────────────────────────────────────────────
+// Costeo y Reportes muestran importes y márgenes: solo para el administrador.
+const ADMIN_ONLY = ["costing","reports"];
 const NAV = [
   {id:"dashboard", Icon:LayoutDashboard, label:"Dashboard"},
   {id:"items",     Icon:Package,         label:"Artículos"},
@@ -584,11 +533,18 @@ const NAV = [
 ];
 const TITLES = {dashboard:"Dashboard",items:"Artículos",inventory:"Inventario",orders:"Órdenes de Trabajo",costing:"Costeo & Márgenes",reports:"Reportes"};
 
-export default function App({ itemsData=[], invData=[], ordersData=[], categoriesData=[], locationsData=[] }){
+export default function App({ itemsData=[], invData=[], ordersData=[], movementsData=[], categoriesData=[], locationsData=[], myHoursToday=0, hasOverheadRates=null }){
   const user    = usePage().props.auth.user;
   const isAdmin = user.role === "admin";
   const [view,   setView]   = useState("dashboard");
   const [menuOpen, setMenuOpen] = useState(false);
+  const [detailId, setDetailId] = useState(null);
+  const page  = usePage();
+  const flash = page.props.flash;
+  const [toast, setToast] = useState(null);
+  useEffect(()=>{
+    if(flash?.success){ setToast(flash.success); const t=setTimeout(()=>setToast(null),4000); return ()=>clearTimeout(t); }
+  },[flash]);
   // Los datos se leen siempre de las props del servidor (Inertia). Antes se copiaban a
   // useState, que solo usa el valor inicial, y la pantalla no mostraba lo recién guardado.
   // La copia [...] evita modificar el arreglo original al ordenar.
@@ -601,6 +557,7 @@ export default function App({ itemsData=[], invData=[], ordersData=[], categorie
   const lowCount = inv.filter(r=>r.qty<=r.min_qty).length;
 
   const closeModal = ()=>{ setModal(null); setEditing(null); };
+  const detailOrder = detailId!==null ? orders.find(o=>o.id===detailId) : null;
 
   const saveItem = f => {
     const payload = {
@@ -630,10 +587,13 @@ export default function App({ itemsData=[], invData=[], ordersData=[], categorie
     description:    f.desc,
     status:         f.status,
     start_date:     f.date,
-    materials_cost: Number(f.mat),
-    labor_cost:     Number(f.labor),
-    overhead_cost:  Number(f.overhead),
+    ...(f.auto ? {} : {
+      materials_cost: Number(f.mat),
+      labor_cost:     Number(f.labor),
+      overhead_cost:  Number(f.overhead),
+    }),
     quoted_price:   Number(f.quoted),
+    machine_hours:  Number(f.machine_hours||0),
   };
   if(f.id){
     router.put(`/work-orders/${f.id}`, payload, { preserveScroll:true, onSuccess: closeModal });
@@ -693,7 +653,7 @@ export default function App({ itemsData=[], invData=[], ordersData=[], categorie
           </div>
         </div>
         <nav style={{flex:1,padding:"10px 8px",display:"flex",flexDirection:"column",gap:2}}>
-          {NAV.map(n=>{
+          {NAV.filter(n=>isAdmin||!ADMIN_ONLY.includes(n.id)).map(n=>{
             const active=view===n.id;
             return(
               <button key={n.id} onClick={()=>{setView(n.id);setMenuOpen(false);}} style={{
@@ -709,13 +669,13 @@ export default function App({ itemsData=[], invData=[], ordersData=[], categorie
               </button>
             );
           })}
-          {isAdmin&&(
-            <button onClick={()=>router.visit('/users')} style={{background:"transparent",color:"#A8A29E",
+          {isAdmin&&[["/overhead-rates",Percent,"Tasas CIF"],["/users",Users,"Usuarios"]].map(([href,Ic,label])=>(
+            <button key={href} onClick={()=>router.visit(href)} style={{background:"transparent",color:"#A8A29E",
               border:"none",cursor:"pointer",borderRadius:8,padding:"9px 12px",display:"flex",alignItems:"center",
               gap:9,fontSize:13,textAlign:"left",width:"100%"}}>
-              <Users size={15}/>Usuarios
+              <Ic size={15}/>{label}
             </button>
-          )}
+          ))}
         </nav>
         <div style={{padding:"12px 14px",borderTop:"1px solid #292524"}}>
           <p style={{fontSize:12,fontWeight:700,color:"#FAF7F4",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{user.name}</p>
@@ -735,18 +695,24 @@ export default function App({ itemsData=[], invData=[], ordersData=[], categorie
           <h1 style={{fontSize:22,fontWeight:700,color:C.text}}>{TITLES[view]}</h1>
           <p style={{fontSize:12,color:C.muted,marginTop:2}}>Sistema de Inventario y Costeo · Carpintería Real Carranza</p>
         </div>
-        {view==="dashboard" && <Dashboard items={items} inv={inv} orders={orders} setView={setView}/>}
+        {view==="dashboard" && <Dashboard items={items} inv={inv} orders={orders} setView={setView} isAdmin={isAdmin} movements={movementsData} myHours={myHoursToday}/>}
         {view==="items"     && <ItemsView canEdit={isAdmin} items={items} inv={inv} onEdit={i=>{setEditing(i);setModal("item");}} onDelete={deleteItem} onNew={()=>{setEditing(null);setModal("item");}}/>}
-        {view==="inventory" && <InventoryView canEdit={isAdmin} items={items} inv={inv} onNew={()=>{setEditing(null);setModal("inv");}}/>}
-        {view==="orders"    && <OrdersView canEdit={isAdmin} orders={orders} onEdit={o=>{setEditing(o);setModal("order");}} onNew={()=>{setEditing(null);setModal("order");}} onStatus={changeStatus}/>}
-        {view==="costing"   && <CostingView orders={orders}/>}
-        {view==="reports"   && <ReportsView items={items} inv={inv} orders={orders}/>}
+        {view==="inventory" && <InventoryView canEdit={isAdmin} items={items} inv={inv} movements={movementsData} onNew={()=>{setEditing(null);setModal("inv");}} onMove={()=>setModal("move")}/>}
+        {view==="orders"    && <OrdersView canEdit={isAdmin} onDetail={setDetailId} orders={orders} onEdit={o=>{setEditing(o);setModal("order");}} onNew={()=>{setEditing(null);setModal("order");}} onStatus={changeStatus}/>}
+        {isAdmin && view==="costing" && <CostingView orders={orders}/>}
+        {isAdmin && view==="reports" && <ReportsView items={items} inv={inv} orders={orders}/>}
       </main>
 
       {/* ── MODALS ── */}
       {modal==="item"  && <ItemModal  editing={editing} categories={categoriesData} onSave={saveItem} onClose={closeModal}/>}
       {modal==="inv"   && <InvModal   editing={editing} items={items} locations={locationsData} onSave={saveInv} onClose={closeModal}/>}
       {modal==="order" && <OrderModal editing={editing}                    onSave={saveOrder} onClose={closeModal}/>}
+      {modal==="move"  && <MovementModal items={items} inv={inv} locations={locationsData} isAdmin={isAdmin} onClose={closeModal}/>}
+      {detailOrder     && <OrderDetailModal order={detailOrder} items={items} inv={inv} locations={locationsData} isAdmin={isAdmin} hasOverheadRates={hasOverheadRates} onClose={()=>setDetailId(null)}/>}
+
+      {/* ── AVISO DE CONFIRMACIÓN ── */}
+      {toast&&<div role="status" style={{position:"fixed",top:16,right:16,zIndex:200,background:"#064E3B",color:"#fff",
+        padding:"10px 16px",borderRadius:10,fontSize:13,fontWeight:600,boxShadow:"0 6px 20px rgba(0,0,0,.25)",maxWidth:"calc(100vw - 32px)"}}>{toast}</div>}
     </div>
   );
 }
