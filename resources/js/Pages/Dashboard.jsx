@@ -2,9 +2,10 @@ import { useState, useEffect } from "react";
 import { router, usePage } from '@inertiajs/react';
 import { LayoutDashboard, Package, Archive, FileText, DollarSign, BarChart2,
          AlertTriangle, Plus, Pencil, Trash2, X, Layers, Wrench,
-         ShoppingBag, Zap, TrendingUp, CheckCircle, Menu, Users, Percent, ArrowLeftRight, ClipboardList } from "lucide-react";
+         ShoppingBag, Zap, TrendingUp, CheckCircle, Menu, Users, Percent, ArrowLeftRight, ClipboardList, ShoppingCart } from "lucide-react";
 
 import { MovementModal, MovementsTable, OrderDetailModal } from "../Components/Costeo";
+import { PurchasesView, PurchaseFormModal, ReceiveModal, SuppliersModal } from "../Components/Compras";
 import { C, ITEM_TYPES, ORDER_STATUS, statusOf, UNITS, $m, card, inp, lbl, th, td, Tag, Btn, Field, Modal } from "../Components/ui";
 
 // ── DASHBOARD ─────────────────────────────────────────────────────────────────
@@ -528,12 +529,13 @@ const NAV = [
   {id:"items",     Icon:Package,         label:"Artículos"},
   {id:"inventory", Icon:Archive,         label:"Inventario"},
   {id:"orders",    Icon:FileText,        label:"Órdenes de Trabajo"},
-  {id:"costing",   Icon:DollarSign,      label:"Costeo"},
+  {id:"purchases", Icon:ShoppingCart,    label:"Compras"},
+  {id:"costing",  Icon:DollarSign,      label:"Costeo"},
   {id:"reports",   Icon:BarChart2,       label:"Reportes"},
 ];
-const TITLES = {dashboard:"Dashboard",items:"Artículos",inventory:"Inventario",orders:"Órdenes de Trabajo",costing:"Costeo & Márgenes",reports:"Reportes"};
+const TITLES = {dashboard:"Dashboard",items:"Artículos",inventory:"Inventario",orders:"Órdenes de Trabajo",purchases:"Compras",costing:"Costeo & Márgenes",reports:"Reportes"};
 
-export default function App({ itemsData=[], invData=[], ordersData=[], movementsData=[], categoriesData=[], locationsData=[], myHoursToday=0, hasOverheadRates=null }){
+export default function App({ itemsData=[], invData=[], ordersData=[], movementsData=[], categoriesData=[], locationsData=[], myHoursToday=0, hasOverheadRates=null, purchasesData=[], suppliersData=[] }){
   const user    = usePage().props.auth.user;
   const isAdmin = user.role === "admin";
   const [view,   setView]   = useState("dashboard");
@@ -699,7 +701,10 @@ export default function App({ itemsData=[], invData=[], ordersData=[], movements
         {view==="items"     && <ItemsView canEdit={isAdmin} items={items} inv={inv} onEdit={i=>{setEditing(i);setModal("item");}} onDelete={deleteItem} onNew={()=>{setEditing(null);setModal("item");}}/>}
         {view==="inventory" && <InventoryView canEdit={isAdmin} items={items} inv={inv} movements={movementsData} onNew={()=>{setEditing(null);setModal("inv");}} onMove={()=>setModal("move")}/>}
         {view==="orders"    && <OrdersView canEdit={isAdmin} onDetail={setDetailId} orders={orders} onEdit={o=>{setEditing(o);setModal("order");}} onNew={()=>{setEditing(null);setModal("order");}} onStatus={changeStatus}/>}
-        {isAdmin && view==="costing" && <CostingView orders={orders}/>}
+        {view==="purchases" && <PurchasesView purchases={purchasesData} isAdmin={isAdmin}
+          onNew={()=>{setEditing(null);setModal("purchase");}} onEdit={p=>{setEditing(p);setModal("purchase");}}
+          onReceive={p=>{setEditing(p);setModal("receive");}} onSuppliers={()=>setModal("suppliers")}/>}
+        {isAdmin && view==="costing" &&<CostingView orders={orders}/>}
         {isAdmin && view==="reports" && <ReportsView items={items} inv={inv} orders={orders}/>}
       </main>
 
@@ -708,6 +713,9 @@ export default function App({ itemsData=[], invData=[], ordersData=[], movements
       {modal==="inv"   && <InvModal   editing={editing} items={items} locations={locationsData} onSave={saveInv} onClose={closeModal}/>}
       {modal==="order" && <OrderModal editing={editing}                    onSave={saveOrder} onClose={closeModal}/>}
       {modal==="move"  && <MovementModal items={items} inv={inv} locations={locationsData} isAdmin={isAdmin} onClose={closeModal}/>}
+      {modal==="purchase"  && isAdmin && <PurchaseFormModal editing={editing} suppliers={suppliersData} items={items} inv={inv} onClose={closeModal}/>}
+      {modal==="receive"   && editing && <ReceiveModal key={editing.id} po={purchasesData.find(p=>p.id===editing.id) ?? editing} inv={inv} locations={locationsData} isAdmin={isAdmin} onClose={closeModal}/>}
+      {modal==="suppliers" && isAdmin && <SuppliersModal suppliers={suppliersData} onClose={closeModal}/>}
       {detailOrder     && <OrderDetailModal order={detailOrder} items={items} inv={inv} locations={locationsData} isAdmin={isAdmin} hasOverheadRates={hasOverheadRates} onClose={()=>setDetailId(null)}/>}
 
       {/* ── AVISO DE CONFIRMACIÓN ── */}

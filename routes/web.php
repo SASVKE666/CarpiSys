@@ -5,6 +5,8 @@ use App\Http\Controllers\InventoryController;
 use App\Http\Controllers\ItemController;
 use App\Http\Controllers\OverheadRateController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\PurchaseOrderController;
+use App\Http\Controllers\SupplierController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\WorkOrderController;
 use App\Http\Controllers\WorkOrderCostController;
@@ -41,6 +43,9 @@ Route::middleware(['auth', 'verified', 'active'])->group(function () {
 
     // El controlador limita a los operarios a cambiar solo el estado (ver WorkOrderController@update)
     Route::put('/work-orders/{workOrder}', [WorkOrderController::class, 'update'])->name('work-orders.update');
+    // Recibir mercancía de una orden de compra (entradas de inventario). Los operarios no ven importes.
+    Route::post('/purchase-orders/{purchaseOrder}/receive', [PurchaseOrderController::class, 'receive'])
+         ->name('purchase-orders.receive');
     Route::post('/work-orders/{workOrder}/idle-time', [WorkOrderController::class, 'idleTime'])
          ->name('work-orders.idle-time');
 
@@ -60,6 +65,16 @@ Route::middleware(['auth', 'verified', 'active', 'role:admin'])->group(function 
     Route::post('/inventory/stock', [InventoryController::class, 'saveStock'])->name('inventory.stock');
     Route::delete('/work-orders/{workOrder}/labor/{labor}', [WorkOrderCostController::class, 'removeLabor'])
          ->name('work-orders.labor.destroy');
+
+    // Compras: el administrador crea, edita, envía, cancela y borra; proveedores
+    Route::post('/purchase-orders', [PurchaseOrderController::class, 'store'])->name('purchase-orders.store');
+    Route::put('/purchase-orders/{purchaseOrder}', [PurchaseOrderController::class, 'update'])->name('purchase-orders.update');
+    Route::delete('/purchase-orders/{purchaseOrder}', [PurchaseOrderController::class, 'destroy'])->name('purchase-orders.destroy');
+    Route::post('/purchase-orders/{purchaseOrder}/send', [PurchaseOrderController::class, 'send'])->name('purchase-orders.send');
+    Route::post('/purchase-orders/{purchaseOrder}/close', [PurchaseOrderController::class, 'close'])->name('purchase-orders.close');
+    Route::post('/purchase-orders/{purchaseOrder}/cancel', [PurchaseOrderController::class, 'cancel'])->name('purchase-orders.cancel');
+    Route::post('/suppliers', [SupplierController::class, 'store'])->name('suppliers.store');
+    Route::put('/suppliers/{supplier}', [SupplierController::class, 'update'])->name('suppliers.update');
 
     Route::get('/overhead-rates', [OverheadRateController::class, 'index'])->name('overhead-rates.index');
     Route::post('/overhead-rates', [OverheadRateController::class, 'store'])->name('overhead-rates.store');
