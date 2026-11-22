@@ -85,3 +85,13 @@ export function Modal({title,onClose,children,width=500}){
   );
 }
 
+// ── ERRORES Y ACCIONES DENTRO DE MODALES ────────────────────────────────────
+// Primer mensaje de error que devolvió el servidor (validación o regla de negocio)
+export const firstError = errs => Object.values(errs || {})[0] || "";
+
+export const ErrorBox = ({errs}) => firstError(errs)
+  ? <div style={{background:C.redBg,color:C.red,borderRadius:8,padding:"9px 12px",fontSize:12,fontWeight:600}}>{firstError(errs)}</div>
+  : null;
+
+// Opciones de inertia para acciones dentro de un modal: no pierden la pantalla ni el scroll.
+export const stay = extra => ({ preserveScroll:true, preserveState:true, ...extra });

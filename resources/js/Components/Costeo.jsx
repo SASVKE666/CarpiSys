@@ -1,17 +1,7 @@
 import { useState } from "react";
 import { router } from "@inertiajs/react";
 import { Trash2, AlertTriangle } from "lucide-react";
-import { C, $m, card, inp, lbl, th, td, Tag, Btn, Field, Modal, statusOf } from "./ui";
-
-// Primer mensaje de error que devolvió el servidor (validación o regla de negocio)
-const firstError = errs => Object.values(errs || {})[0] || "";
-
-const ErrorBox = ({errs}) => firstError(errs)
-  ? <div style={{background:C.redBg,color:C.red,borderRadius:8,padding:"9px 12px",fontSize:12,fontWeight:600}}>{firstError(errs)}</div>
-  : null;
-
-// Opciones de inertia para acciones dentro de un modal: no pierden la pantalla ni el scroll.
-const stay = extra => ({ preserveScroll:true, preserveState:true, ...extra });
+import { C, $m, card, inp, lbl, th, td, Tag, Btn, Field, Modal, statusOf, firstError, ErrorBox, stay } from "./ui";
 
 export const MOV_TYPES = {
   entrada:    { label:"Entrada",    sign:"+", col:C.green,  bg:C.greenBg,  hint:"Llega material (compra o recepción)." },

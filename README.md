@@ -47,6 +47,8 @@ Para desarrollar (recarga automática): `npm run dev` en una terminal y `php art
 | Quitar material que registró uno mismo (vuelve al inventario) | ✔ | ✔ |
 | Quitar material de otros o borrar horas | | ✔ |
 | Indicar el costo de una compra (actualiza el costo promedio del artículo) | | ✔ |
+| Ver órdenes de compra (sin precios) y **recibir mercancía** | ✔ | ✔ |
+| Crear, editar, enviar, cancelar órdenes de compra y administrar proveedores; corregir el costo al recibir | | ✔ |
 | Crear, editar o desactivar artículos | | ✔ |
 | Crear y editar órdenes (cliente, precios, horas de máquina) | | ✔ |
 | Ajustar existencias directamente | | ✔ |
@@ -74,6 +76,23 @@ Cada orden de trabajo acumula su costo a partir de lo que realmente se registra 
 - Una orden **completada o cancelada** ya no admite cambios de materiales ni horas (hay que reabrirla). Cambiar una tasa recalcula las órdenes abiertas.
 - Si una orden tiene costos escritos a mano (estimados) y aún no tiene registros, se respetan; al registrar el primer material u hora,
   el costo pasa a calcularse solo desde los registros.
+
+## Compras (órdenes de compra)
+
+Menú **Compras**. Una orden de compra pasa por estos estados:
+
+`Borrador` → `Enviada` → `Recepción parcial` → `Recibida` (o `Cancelada`)
+
+- El **administrador** crea la orden (proveedor, artículos, cantidades, costo unitario, IVA — 16 % por defecto — y fecha esperada). Se guarda como **borrador**,
+  que puede editarse o eliminarse. Al pedirla al proveedor se marca como **enviada**. El botón *Agregar los de stock bajo* propone los artículos
+  por debajo del mínimo (cantidad sugerida: hasta el doble del mínimo).
+- **Crear o enviar una orden no mueve el inventario.** El inventario cambia solo al **recibir mercancía**: cada artículo recibido genera un movimiento de
+  *entrada* (ligado al código OC-xxxx) en la ubicación elegida y actualiza el costo promedio ponderado del artículo.
+- Cualquier usuario activo puede **recibir mercancía** (también por partes). Se captura lo que realmente llegó; el sistema no permite recibir más de lo pendiente.
+  Los operarios no ven precios ni totales, y no pueden cambiar el costo; si el costo real difiere, lo corrige el administrador al recibir.
+- Si el proveedor ya no enviará el resto, el administrador usa *Dar por recibida*: los artículos pendientes se quitan de la orden.
+  Una orden **enviada** (sin recepciones) puede cancelarse; una con recepciones ya no.
+- Los proveedores no se borran: se desactivan para conservar el historial.
 
 ## Usarlo desde varios dispositivos en la red local (celulares, tabletas, otras PCs)
 
