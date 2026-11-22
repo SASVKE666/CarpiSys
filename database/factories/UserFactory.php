@@ -30,6 +30,10 @@ class UserFactory extends Factory
             'email_verified_at' => now(),
             'password' => static::$password ??= Hash::make('password'),
             'remember_token' => Str::random(10),
+            // Se definen aquí para que el modelo en memoria los tenga (el valor por defecto
+            // de la base de datos no se refleja en el objeto recién creado).
+            'role' => 'operario',
+            'is_active' => true,
         ];
     }
 

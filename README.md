@@ -40,15 +40,40 @@ Para desarrollar (recarga automática): `npm run dev` en una terminal y `php art
 
 | | Operario | Administrador |
 |---|:-:|:-:|
-| Ver dashboard, artículos, inventario, órdenes, costeo y reportes | ✔ | ✔ |
-| Registrar movimientos de inventario (existe en el servidor; la pantalla para hacerlo aún no) | ✔ | ✔ |
-| Cambiar el estado de una orden y registrar tiempos muertos | ✔ | ✔ |
+| Ver dashboard, artículos, inventario (existencias y movimientos) y órdenes (sin importes) | ✔ | ✔ |
+| Ver costos, precios, márgenes, Costeo y Reportes | | ✔ |
+| Registrar movimientos de inventario (entrada, salida, merma, devolución) | ✔ | ✔ |
+| Usar material y registrar horas en una orden; cambiar su estado; tiempos muertos | ✔ | ✔ |
+| Quitar material que registró uno mismo (vuelve al inventario) | ✔ | ✔ |
+| Quitar material de otros o borrar horas | | ✔ |
+| Indicar el costo de una compra (actualiza el costo promedio del artículo) | | ✔ |
 | Crear, editar o desactivar artículos | | ✔ |
-| Crear y editar órdenes (cliente, precios, costos) | | ✔ |
+| Crear y editar órdenes (cliente, precios, horas de máquina) | | ✔ |
 | Ajustar existencias directamente | | ✔ |
-| Crear usuarios, cambiar roles, desactivar, restablecer contraseñas | | ✔ |
+| Definir tasas de CIF (menú **Tasas CIF**) | | ✔ |
+| Crear usuarios, cambiar roles, definir tarifa por hora, desactivar, restablecer contraseñas | | ✔ |
+
+Los operarios **no reciben** los importes: el servidor no los envía a su navegador (no solo se ocultan en pantalla).
 
 Los permisos se definen en `routes/web.php` (por ruta) y `WorkOrderController@update` (qué puede cambiar un operario).
+
+## Costeo automático por orden (MD + MOD + CIF)
+
+Cada orden de trabajo acumula su costo a partir de lo que realmente se registra en ella (botón **Materiales y horas**):
+
+- **Materiales directos (MD):** al usar material se descuenta del inventario (queda un movimiento de *salida* ligado a la orden) y se suma
+  `cantidad × costo unitario del artículo en ese momento`. El costo se congela: cambiarlo después no altera lo ya registrado.
+  No se permite usar más de lo que hay en la ubicación. Si se quita un registro, el material regresa al inventario.
+- **Costo del artículo:** costo promedio ponderado. Cuando el administrador registra una *entrada* con el costo de la compra, el costo
+  del artículo pasa a `(existencia × costo actual + cantidad × costo de la compra) ÷ nueva existencia`.
+- **Mano de obra directa (MOD):** `horas × tarifa por hora`. La tarifa de cada persona la define el administrador en **Usuarios**; el operario
+  registra sus horas y no ve ni escribe tarifas. Para personal sin cuenta, el administrador indica nombre y tarifa al registrar las horas.
+- **Costos indirectos (CIF):** suma de las tasas activas definidas en **Tasas CIF**: % de la mano de obra, % de los materiales, o tarifa por
+  hora de máquina (× las *horas de máquina* de la orden). El tipo "monto fijo mensual" aún no se reparte automáticamente.
+  **Mientras no haya tasas activas, el CIF de las órdenes es $0**; define tus tasas antes de usar el costeo en serio.
+- Una orden **completada o cancelada** ya no admite cambios de materiales ni horas (hay que reabrirla). Cambiar una tasa recalcula las órdenes abiertas.
+- Si una orden tiene costos escritos a mano (estimados) y aún no tiene registros, se respetan; al registrar el primer material u hora,
+  el costo pasa a calcularse solo desde los registros.
 
 ## Usarlo desde varios dispositivos en la red local (celulares, tabletas, otras PCs)
 

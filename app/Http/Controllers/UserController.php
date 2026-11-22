@@ -19,7 +19,7 @@ class UserController extends Controller
     public function index(): Response
     {
         return Inertia::render('Users/Index', [
-            'users' => User::orderBy('name')->get(['id', 'name', 'email', 'role', 'is_active']),
+            'users' => User::orderBy('name')->get(['id', 'name', 'email', 'role', 'is_active', 'hourly_rate']),
             'roles' => User::ROLES,
         ]);
     }
@@ -31,6 +31,7 @@ class UserController extends Controller
             'email'    => 'required|string|lowercase|email|max:255|unique:users,email',
             'password' => ['required', Password::min(8)],
             'role'     => ['required', Rule::in(User::ROLES)],
+            'hourly_rate' => 'nullable|numeric|min:0|max:100000',
         ]);
 
         $user = new User([
@@ -38,8 +39,9 @@ class UserController extends Controller
             'email'    => $data['email'],
             'password' => $data['password'], // el cast "hashed" lo cifra
         ]);
-        $user->role      = $data['role'];
-        $user->is_active = true;
+        $user->role        = $data['role'];
+        $user->is_active   = true;
+        $user->hourly_rate = $data['hourly_rate'] ?? null;
         $user->save();
 
         return redirect()->route('users.index')->with('success', 'Usuario creado.');
@@ -52,6 +54,8 @@ class UserController extends Controller
             'role'      => ['sometimes', 'required', Rule::in(User::ROLES)],
             'is_active' => 'sometimes|boolean',
             'password'  => ['nullable', Password::min(8)],
+            // Tarifa por hora para costear la mano de obra. Cambiarla no afecta horas ya registradas.
+            'hourly_rate' => 'nullable|numeric|min:0|max:100000',
         ]);
 
         // Evita quedarse sin administrador o sin acceso por accidente.
@@ -68,6 +72,7 @@ class UserController extends Controller
         if (isset($data['role']))                       $user->role      = $data['role'];
         if (array_key_exists('is_active', $data))       $user->is_active = $data['is_active'];
         if (! empty($data['password']))                 $user->password  = $data['password'];
+        if (array_key_exists('hourly_rate', $data))     $user->hourly_rate = $data['hourly_rate'];
         $user->save();
 
         return redirect()->route('users.index')->with('success', 'Usuario actualizado.');

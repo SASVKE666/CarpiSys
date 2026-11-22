@@ -9,6 +9,10 @@ class IdleTimeRecord extends Model {
     const UPDATED_AT = null;
     protected $fillable = ['work_order_id','cause','duration_min','worker_name','economic_cost','notes','recorded_by'];
 
+    protected static function booted(): void {
+        static::creating(fn (self $r) => $r->created_at ??= now());
+    }
+
     public function workOrder()  { return $this->belongsTo(WorkOrder::class); }
     public function recordedBy() { return $this->belongsTo(User::class, 'recorded_by'); }
 }
