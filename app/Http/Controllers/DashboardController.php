@@ -8,6 +8,8 @@ use App\Models\Item;
 use App\Models\LaborRecord;
 use App\Models\Location;
 use App\Models\OverheadRate;
+use App\Models\PurchaseOrder;
+use App\Models\Supplier;
 use App\Models\WorkOrder;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -98,6 +100,8 @@ class DashboardController extends Controller
             ->orderByDesc('id')->limit(40)->get();
         $orderCodes = WorkOrder::whereIn('id', $movs->where('reference_type', 'work_order')->pluck('reference_id')->filter())
             ->pluck('code', 'id');
+        $purchaseCodes = PurchaseOrder::whereIn('id', $movs->where('reference_type', 'purchase_order')->pluck('reference_id')->filter())
+            ->pluck('code', 'id');
         $movements = $movs->map(fn ($m) => [
             'id'       => $m->id,
             'date'     => $m->created_at?->timezone(config('app.timezone'))->format('Y-m-d H:i'),
@@ -107,11 +111,51 @@ class DashboardController extends Controller
             'qty'      => (float) $m->quantity,
             'location' => $m->location?->name ?? '',
             'by'       => $m->user?->name ?? '',
-            'order'    => $m->reference_type === 'work_order' ? ($orderCodes[$m->reference_id] ?? '') : '',
+            'order'    => match ($m->reference_type) {
+                'work_order'     => $orderCodes[$m->reference_id] ?? '',
+                'purchase_order' => $purchaseCodes[$m->reference_id] ?? '',
+                default          => '',
+            },
             'cost'     => $money($m->unit_cost),
         ]);
 
+        // Órdenes de compra. Los operarios ven qué se pidió y qué falta por llegar, pero no los importes.
+        $purchases = PurchaseOrder::with(['supplier', 'items.item'])
+            ->orderByDesc('id')->limit(100)->get()
+            ->map(fn ($p) => [
+                'id'          => $p->id,
+                'code'        => $p->code,
+                'supplier_id' => $p->supplier_id,
+                'supplier'    => $p->supplier?->name ?? '—',
+                'status'      => $p->status,
+                'ordered'     => $p->ordered_date?->format('Y-m-d'),
+                'expected'    => $p->expected_date?->format('Y-m-d'),
+                'received'    => $p->received_date?->format('Y-m-d'),
+                'notes'       => $p->notes ?? '',
+                'tax_rate'    => $isAdmin ? (float) $p->tax_rate : null,
+                'subtotal'    => $money($p->subtotal),
+                'tax'         => $money($p->tax),
+                'total'       => $money($p->total),
+                'lines'       => $p->items->map(fn ($l) => [
+                    'id'       => $l->id,
+                    'item_id'  => $l->item_id,
+                    'name'     => $l->item?->name ?? '—',
+                    'sku'      => $l->item?->sku ?? '',
+                    'unit'     => $l->item?->unit ?? '',
+                    'ordered'  => (float) $l->quantity_ordered,
+                    'received' => (float) $l->quantity_received,
+                    'cost'     => $money($l->unit_cost),
+                    'subtotal' => $money($l->quantity_ordered * $l->unit_cost),
+                ])->values(),
+            ]);
+
         return Inertia::render('Dashboard', [
+            'purchasesData'  => $purchases,
+            'suppliersData'  => Supplier::orderBy('name')->get()->map(fn ($s) => [
+                'id' => $s->id, 'name' => $s->name, 'contact' => $s->contact ?? '', 'phone' => $s->phone ?? '',
+                'email' => $s->email ?? '', 'address' => $s->address ?? '', 'notes' => $s->notes ?? '',
+                'is_active' => (bool) $s->is_active,
+            ]),
             'itemsData'      => $items,
             'invData'        => $inv,
             'ordersData'     => $orders,
