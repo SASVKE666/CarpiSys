@@ -6,6 +6,7 @@ use App\Http\Controllers\ItemController;
 use App\Http\Controllers\OverheadRateController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\PurchaseOrderController;
+use App\Http\Controllers\ReportController;
 use App\Http\Controllers\SupplierController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\WorkOrderController;
@@ -75,6 +76,8 @@ Route::middleware(['auth', 'verified', 'active', 'role:admin'])->group(function 
     Route::post('/purchase-orders/{purchaseOrder}/cancel', [PurchaseOrderController::class, 'cancel'])->name('purchase-orders.cancel');
     Route::post('/suppliers', [SupplierController::class, 'store'])->name('suppliers.store');
     Route::put('/suppliers/{supplier}', [SupplierController::class, 'update'])->name('suppliers.update');
+
+    Route::get('/reports/movimientos-semanales.csv', [ReportController::class, 'weeklyCsv'])->name('reports.weekly-csv');
 
     Route::get('/overhead-rates', [OverheadRateController::class, 'index'])->name('overhead-rates.index');
     Route::post('/overhead-rates', [OverheadRateController::class, 'store'])->name('overhead-rates.store');

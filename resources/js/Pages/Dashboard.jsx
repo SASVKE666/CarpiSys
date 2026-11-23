@@ -348,7 +348,7 @@ function CostingView({orders}){
 }
 
 // ── REPORTS VIEW ──────────────────────────────────────────────────────────────
-function ReportsView({items,inv,orders}){
+function ReportsView({items,inv,orders,weekly}){
   const totalVal=inv.reduce((s,r)=>{const i=items.find(x=>x.id===r.item_id);return s+(i?i.cost*r.qty:0);},0);
   return(
     <div className="rg1" style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}>
@@ -399,6 +399,42 @@ function ReportsView({items,inv,orders}){
           <span style={{fontSize:16,fontWeight:700,color:C.green}}>{$m(orders.reduce((s,o)=>s+Number(o.quoted),0))}</span>
         </div>
       </div>
+      {weekly&&(
+        <div style={{...card,padding:0,gridColumn:"1 / -1"}}>
+          <div style={{padding:"16px 18px 12px",display:"flex",gap:12,alignItems:"flex-start",justifyContent:"space-between",flexWrap:"wrap"}}>
+            <div style={{minWidth:0,flex:"1 1 280px"}}>
+              <p style={{fontWeight:700,fontSize:14,color:C.text}}>Movimientos por semana</p>
+              <p style={{fontSize:12,color:C.muted,marginTop:4}}>
+                Cuántas salidas de material quedaron registradas en CarpiSys cada semana (lunes a domingo). Son solo conteos, sin importes ni nombres.
+              </p>
+            </div>
+            <a href="/reports/movimientos-semanales.csv?semanas=12" style={{fontSize:12,fontWeight:700,color:C.amber,textDecoration:"none",border:`1px solid ${C.border}`,borderRadius:8,padding:"7px 12px"}}>Descargar CSV</a>
+          </div>
+          <div style={{overflowX:"auto"}}>
+            <table style={{width:"100%",borderCollapse:"collapse",minWidth:620}}>
+              <thead><tr>{["Semana (lunes)","Salidas","Con orden","Manuales","Mermas","Devoluciones","Entradas","Órdenes con salidas","Días con salidas"].map(h=><th key={h} style={th}>{h}</th>)}</tr></thead>
+              <tbody>
+                {[...weekly].reverse().map(w=>(
+                  <tr key={w.week}>
+                    <td style={{...td,fontSize:12,fontFamily:"monospace",color:C.text,whiteSpace:"nowrap"}}>{w.week}</td>
+                    <td style={{...td,fontSize:13,fontWeight:700,color:w.salidas?C.text:C.faint}}>{w.salidas}</td>
+                    <td style={{...td,fontSize:12,color:C.muted}}>{w.salidas_orden}</td>
+                    <td style={{...td,fontSize:12,color:C.muted}}>{w.salidas_manuales}</td>
+                    <td style={{...td,fontSize:12,color:C.muted}}>{w.mermas}</td>
+                    <td style={{...td,fontSize:12,color:C.muted}}>{w.devoluciones}</td>
+                    <td style={{...td,fontSize:12,color:C.muted}}>{w.entradas}</td>
+                    <td style={{...td,fontSize:12,color:C.muted}}>{w.ordenes}</td>
+                    <td style={{...td,fontSize:12,color:C.muted}}>{w.dias_con_salidas}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <p style={{fontSize:11,color:C.faint,padding:"10px 18px 14px"}}>
+            «Con orden» son salidas ligadas a una orden de trabajo; «Manuales», las hechas desde Inventario sin orden. El total real de salidas lo mides tú en el taller.
+          </p>
+        </div>
+      )}
     </div>
   );
 }
@@ -535,7 +571,7 @@ const NAV = [
 ];
 const TITLES = {dashboard:"Dashboard",items:"Artículos",inventory:"Inventario",orders:"Órdenes de Trabajo",purchases:"Compras",costing:"Costeo & Márgenes",reports:"Reportes"};
 
-export default function App({ itemsData=[], invData=[], ordersData=[], movementsData=[], categoriesData=[], locationsData=[], myHoursToday=0, hasOverheadRates=null, purchasesData=[], suppliersData=[] }){
+export default function App({ itemsData=[], invData=[], ordersData=[], movementsData=[], categoriesData=[], locationsData=[], myHoursToday=0, hasOverheadRates=null, purchasesData=[], suppliersData=[], weeklyMovements=null }){
   const user    = usePage().props.auth.user;
   const isAdmin = user.role === "admin";
   const [view,   setView]   = useState("dashboard");
@@ -705,7 +741,7 @@ export default function App({ itemsData=[], invData=[], ordersData=[], movements
           onNew={()=>{setEditing(null);setModal("purchase");}} onEdit={p=>{setEditing(p);setModal("purchase");}}
           onReceive={p=>{setEditing(p);setModal("receive");}} onSuppliers={()=>setModal("suppliers")}/>}
         {isAdmin && view==="costing" &&<CostingView orders={orders}/>}
-        {isAdmin && view==="reports" && <ReportsView items={items} inv={inv} orders={orders}/>}
+        {isAdmin && view==="reports" && <ReportsView items={items} inv={inv} orders={orders} weekly={weeklyMovements}/>}
       </main>
 
       {/* ── MODALS ── */}
