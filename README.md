@@ -41,7 +41,7 @@ Para desarrollar (recarga automática): `npm run dev` en una terminal y `php art
 | | Operario | Administrador |
 |---|:-:|:-:|
 | Ver dashboard, artículos, inventario (existencias y movimientos) y órdenes (sin importes) | ✔ | ✔ |
-| Ver costos, precios, márgenes, Costeo y Reportes | | ✔ |
+| Ver costos, precios, márgenes, Costeo y Reportes (incluye el conteo semanal de movimientos) | | ✔ |
 | Registrar movimientos de inventario (entrada, salida, merma, devolución) | ✔ | ✔ |
 | Usar material y registrar horas en una orden; cambiar su estado; tiempos muertos | ✔ | ✔ |
 | Quitar material que registró uno mismo (vuelve al inventario) | ✔ | ✔ |
@@ -93,6 +93,17 @@ Menú **Compras**. Una orden de compra pasa por estos estados:
 - Si el proveedor ya no enviará el resto, el administrador usa *Dar por recibida*: los artículos pendientes se quitan de la orden.
   Una orden **enviada** (sin recepciones) puede cancelarse; una con recepciones ya no.
 - Los proveedores no se borran: se desactivan para conservar el historial.
+
+## Reporte de movimientos por semana
+
+En **Reportes** (solo administrador) hay una tabla con las últimas 12 semanas, de lunes a domingo en la zona horaria de la aplicación
+(`APP_TIMEZONE`, por defecto America/Mazatlan). Por semana cuenta: salidas (y cuántas fueron con orden de trabajo y cuántas manuales),
+mermas, devoluciones, entradas, órdenes distintas con salidas y días con salidas. Incluye las semanas sin movimientos.
+
+- Son **solo conteos**: no lleva importes ni el nombre de quien registró, para que no sirva para vigilar a una persona.
+- **Descargar CSV** (`/reports/movimientos-semanales.csv?semanas=12`, de 1 a 52) lo abre Excel directamente.
+- CarpiSys cuenta lo que se registró; el total real de salidas del taller no lo conoce. Si lo usas como numerador de "% de salidas registradas",
+  el denominador tiene que medirse por observación o conteo físico.
 
 ## Usarlo desde varios dispositivos en la red local (celulares, tabletas, otras PCs)
 

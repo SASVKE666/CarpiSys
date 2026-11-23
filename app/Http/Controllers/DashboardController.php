@@ -11,6 +11,7 @@ use App\Models\OverheadRate;
 use App\Models\PurchaseOrder;
 use App\Models\Supplier;
 use App\Models\WorkOrder;
+use App\Services\MovementReportService;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 
@@ -167,6 +168,8 @@ class DashboardController extends Controller
                                     ->whereDate('work_date', now()->toDateString())->sum('hours'),
             // Aviso para el administrador: sin tasas activas, el CIF calculado sería $0
             'hasOverheadRates' => $isAdmin ? OverheadRate::active()->exists() : null,
+            // Conteo semanal de movimientos (sin importes): solo se envía al administrador, que ve Reportes
+            'weeklyMovements'  => $isAdmin ? app(MovementReportService::class)->weekly(12) : null,
         ]);
     }
 }
