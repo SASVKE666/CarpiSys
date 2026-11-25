@@ -348,7 +348,8 @@ function CostingView({orders}){
 }
 
 // ── REPORTS VIEW ──────────────────────────────────────────────────────────────
-function ReportsView({items,inv,orders,weekly}){
+function ReportsView({items,inv,orders,weekly,daily,variance}){
+  const [period,setPeriod]=useState("semana");
   const totalVal=inv.reduce((s,r)=>{const i=items.find(x=>x.id===r.item_id);return s+(i?i.cost*r.qty:0);},0);
   return(
     <div className="rg1" style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}>
@@ -403,20 +404,30 @@ function ReportsView({items,inv,orders,weekly}){
         <div style={{...card,padding:0,gridColumn:"1 / -1"}}>
           <div style={{padding:"16px 18px 12px",display:"flex",gap:12,alignItems:"flex-start",justifyContent:"space-between",flexWrap:"wrap"}}>
             <div style={{minWidth:0,flex:"1 1 280px"}}>
-              <p style={{fontWeight:700,fontSize:14,color:C.text}}>Movimientos por semana</p>
+              <p style={{fontWeight:700,fontSize:14,color:C.text}}>Movimientos por {period==="semana"?"semana":"día"}</p>
               <p style={{fontSize:12,color:C.muted,marginTop:4}}>
-                Cuántas salidas de material quedaron registradas en CarpiSys cada semana (lunes a domingo). Son solo conteos, sin importes ni nombres.
+                Cuántas salidas de material quedaron registradas en CarpiSys cada {period==="semana"?"semana (lunes a domingo)":"día"}. Son solo conteos, sin importes ni nombres.
               </p>
             </div>
-            <a href="/reports/movimientos-semanales.csv?semanas=12" style={{fontSize:12,fontWeight:700,color:C.amber,textDecoration:"none",border:`1px solid ${C.border}`,borderRadius:8,padding:"7px 12px"}}>Descargar CSV</a>
+            <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}}>
+              {[["semana","Por semana"],["dia","Por día"]].map(([k,l])=>(
+                <button key={k} onClick={()=>setPeriod(k)} style={{
+                  background:period===k?C.amber:"#F5F4F2",color:period===k?"#fff":C.muted,border:"none",cursor:"pointer",
+                  borderRadius:8,padding:"7px 12px",fontSize:12,fontWeight:700,fontFamily:"inherit"}}>{l}</button>
+              ))}
+              <a href={period==="semana"?"/reports/movimientos-semanales.csv?semanas=12":"/reports/movimientos-diarios.csv?dias=14"}
+                 style={{fontSize:12,fontWeight:700,color:C.amber,textDecoration:"none",border:`1px solid ${C.border}`,borderRadius:8,padding:"7px 12px"}}>Descargar CSV</a>
+            </div>
           </div>
           <div style={{overflowX:"auto"}}>
             <table style={{width:"100%",borderCollapse:"collapse",minWidth:620}}>
-              <thead><tr>{["Semana (lunes)","Salidas","Con orden","Manuales","Mermas","Devoluciones","Entradas","Órdenes con salidas","Días con salidas"].map(h=><th key={h} style={th}>{h}</th>)}</tr></thead>
+              <thead><tr>{[period==="semana"?"Semana (lunes)":"Día","Salidas","Con orden","Manuales","Mermas","Devoluciones","Entradas","Órdenes con salidas",...(period==="semana"?["Días con salidas"]:[])].map(h=><th key={h} style={th}>{h}</th>)}</tr></thead>
               <tbody>
-                {[...weekly].reverse().map(w=>(
-                  <tr key={w.week}>
-                    <td style={{...td,fontSize:12,fontFamily:"monospace",color:C.text,whiteSpace:"nowrap"}}>{w.week}</td>
+                {[...(period==="semana"?weekly:(daily??[]))].reverse().map(w=>{
+                  const k=w.week??w.day;
+                  return(
+                  <tr key={k}>
+                    <td style={{...td,fontSize:12,fontFamily:"monospace",color:C.text,whiteSpace:"nowrap"}}>{k}</td>
                     <td style={{...td,fontSize:13,fontWeight:700,color:w.salidas?C.text:C.faint}}>{w.salidas}</td>
                     <td style={{...td,fontSize:12,color:C.muted}}>{w.salidas_orden}</td>
                     <td style={{...td,fontSize:12,color:C.muted}}>{w.salidas_manuales}</td>
@@ -424,14 +435,57 @@ function ReportsView({items,inv,orders,weekly}){
                     <td style={{...td,fontSize:12,color:C.muted}}>{w.devoluciones}</td>
                     <td style={{...td,fontSize:12,color:C.muted}}>{w.entradas}</td>
                     <td style={{...td,fontSize:12,color:C.muted}}>{w.ordenes}</td>
-                    <td style={{...td,fontSize:12,color:C.muted}}>{w.dias_con_salidas}</td>
+                    {period==="semana"&&<td style={{...td,fontSize:12,color:C.muted}}>{w.dias_con_salidas}</td>}
                   </tr>
-                ))}
+                  );
+                })}
               </tbody>
             </table>
           </div>
           <p style={{fontSize:11,color:C.faint,padding:"10px 18px 14px"}}>
             «Con orden» son salidas ligadas a una orden de trabajo; «Manuales», las hechas desde Inventario sin orden. El total real de salidas lo mides tú en el taller.
+          </p>
+        </div>
+      )}
+      {variance&&(
+        <div style={{...card,padding:0,gridColumn:"1 / -1"}}>
+          <div style={{padding:"16px 18px 12px"}}>
+            <p style={{fontWeight:700,fontSize:14,color:C.text}}>Material estimado vs. registrado</p>
+            <p style={{fontSize:12,color:C.muted,marginTop:4}}>
+              Órdenes completadas que tienen material estimado. «Cobertura» es el porcentaje de líneas estimadas cuyo registro llegó al menos al 90 % de lo estimado.
+            </p>
+          </div>
+          {variance.orders.length>0?(
+            <div style={{overflowX:"auto"}}>
+              <table style={{width:"100%",borderCollapse:"collapse",minWidth:560}}>
+                <thead><tr>{["Orden","Líneas estimadas","Dentro de lo esperado","Menos de lo estimado","Más de lo estimado","Sin estimado","Cobertura"].map(h=><th key={h} style={th}>{h}</th>)}</tr></thead>
+                <tbody>
+                  {variance.orders.map(r=>(
+                    <tr key={r.id}>
+                      <td style={{...td,fontSize:12,fontFamily:"monospace",color:C.text}}>{r.code}</td>
+                      <td style={{...td,fontSize:12,color:C.muted}}>{r.lines}</td>
+                      <td style={{...td,fontSize:12,color:C.muted}}>{r.ok}</td>
+                      <td style={{...td,fontSize:12,color:C.muted}}>{r.low}</td>
+                      <td style={{...td,fontSize:12,color:C.muted}}>{r.excess}</td>
+                      <td style={{...td,fontSize:12,color:C.muted}}>{r.unplanned}</td>
+                      <td style={{...td,fontSize:13,fontWeight:700,color:C.text}}>{r.coverage===null?"—":`${r.coverage}%`}</td>
+                    </tr>
+                  ))}
+                  <tr>
+                    <td style={{...td,fontSize:12,fontWeight:700,color:C.text}}>Total ({variance.total.orders})</td>
+                    <td style={{...td,fontSize:12,fontWeight:700,color:C.text}}>{variance.total.lines}</td>
+                    <td style={{...td,fontSize:12,fontWeight:700,color:C.text}}>{variance.total.ok}</td>
+                    <td style={{...td,fontSize:12,fontWeight:700,color:C.text}}>{variance.total.low}</td>
+                    <td style={{...td,fontSize:12,fontWeight:700,color:C.text}}>{variance.total.excess}</td>
+                    <td style={td}></td>
+                    <td style={{...td,fontSize:13,fontWeight:700,color:C.text}}>{variance.total.coverage===null?"—":`${variance.total.coverage}%`}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          ):<p style={{fontSize:12,color:C.faint,padding:"0 18px 14px"}}>Aún no hay órdenes completadas con material estimado. Indica el estimado en «Materiales y horas» de cada orden.</p>}
+          <p style={{fontSize:11,color:C.faint,padding:"10px 18px 14px"}}>
+            Es una aproximación: menos de lo estimado puede ser salidas sin registrar o menor uso; más, desperdicio o un estimado corto. Confírmalo con la observación o el conteo físico.
           </p>
         </div>
       )}
@@ -571,7 +625,7 @@ const NAV = [
 ];
 const TITLES = {dashboard:"Dashboard",items:"Artículos",inventory:"Inventario",orders:"Órdenes de Trabajo",purchases:"Compras",costing:"Costeo & Márgenes",reports:"Reportes"};
 
-export default function App({ itemsData=[], invData=[], ordersData=[], movementsData=[], categoriesData=[], locationsData=[], myHoursToday=0, hasOverheadRates=null, purchasesData=[], suppliersData=[], weeklyMovements=null }){
+export default function App({ itemsData=[], invData=[], ordersData=[], movementsData=[], categoriesData=[], locationsData=[], myHoursToday=0, hasOverheadRates=null, purchasesData=[], suppliersData=[], weeklyMovements=null, dailyMovements=null, varianceSummary=null }){
   const user    = usePage().props.auth.user;
   const isAdmin = user.role === "admin";
   const [view,   setView]   = useState("dashboard");
@@ -741,7 +795,7 @@ export default function App({ itemsData=[], invData=[], ordersData=[], movements
           onNew={()=>{setEditing(null);setModal("purchase");}} onEdit={p=>{setEditing(p);setModal("purchase");}}
           onReceive={p=>{setEditing(p);setModal("receive");}} onSuppliers={()=>setModal("suppliers")}/>}
         {isAdmin && view==="costing" &&<CostingView orders={orders}/>}
-        {isAdmin && view==="reports" && <ReportsView items={items} inv={inv} orders={orders} weekly={weeklyMovements}/>}
+        {isAdmin && view==="reports" && <ReportsView items={items} inv={inv} orders={orders} weekly={weeklyMovements} daily={dailyMovements} variance={varianceSummary}/>}
       </main>
 
       {/* ── MODALS ── */}

@@ -41,7 +41,7 @@ Para desarrollar (recarga automática): `npm run dev` en una terminal y `php art
 | | Operario | Administrador |
 |---|:-:|:-:|
 | Ver dashboard, artículos, inventario (existencias y movimientos) y órdenes (sin importes) | ✔ | ✔ |
-| Ver costos, precios, márgenes, Costeo y Reportes (incluye el conteo semanal de movimientos) | | ✔ |
+| Ver costos, precios, márgenes, Costeo y Reportes (incluye el conteo semanal y diario de movimientos y el material estimado vs. registrado) | | ✔ |
 | Registrar movimientos de inventario (entrada, salida, merma, devolución) | ✔ | ✔ |
 | Usar material y registrar horas en una orden; cambiar su estado; tiempos muertos | ✔ | ✔ |
 | Quitar material que registró uno mismo (vuelve al inventario) | ✔ | ✔ |
@@ -51,6 +51,8 @@ Para desarrollar (recarga automática): `npm run dev` en una terminal y `php art
 | Crear, editar, enviar, cancelar órdenes de compra y administrar proveedores; corregir el costo al recibir | | ✔ |
 | Crear, editar o desactivar artículos | | ✔ |
 | Crear y editar órdenes (cliente, precios, horas de máquina) | | ✔ |
+| Indicar el material estimado de una orden | | ✔ |
+| Ver el material estimado de una orden y compararlo con lo registrado | ✔ | ✔ |
 | Ajustar existencias directamente | | ✔ |
 | Definir tasas de CIF (menú **Tasas CIF**) | | ✔ |
 | Crear usuarios, cambiar roles, definir tarifa por hora, desactivar, restablecer contraseñas | | ✔ |
@@ -77,6 +79,19 @@ Cada orden de trabajo acumula su costo a partir de lo que realmente se registra 
 - Si una orden tiene costos escritos a mano (estimados) y aún no tiene registros, se respetan; al registrar el primer material u hora,
   el costo pasa a calcularse solo desde los registros.
 
+## Material estimado por orden
+
+En **Materiales y horas** de cada orden el administrador puede indicar el **material estimado** (artículo y cantidad que calcula que necesita
+la orden). Es solo un plan: **no mueve inventario ni cambia costos**. Solo se edita mientras la orden esté abierta; las herramientas no se estiman.
+
+- Cada línea se compara con lo que realmente se registró como salida de esa orden: *Dentro de lo esperado* (de 90 % a 110 % del estimado),
+  *Menos de lo estimado* (menos de 90 %), *Más de lo estimado* (más de 110 %) y *Sin estimado* (material usado que no estaba en el plan).
+- Operarios y administrador ven la comparación (son cantidades, no importes); solo el administrador captura el estimado.
+- En **Reportes**, la tarjeta *Material estimado vs. registrado* resume las **órdenes completadas** con estimado. **Cobertura** = % de líneas estimadas
+  cuyo registro llegó al menos al 90 % de lo estimado.
+- Es una aproximación: menos de lo estimado puede ser salidas sin registrar o menor uso; más, desperdicio o un estimado corto. Para distinguirlo
+  hace falta la observación o el conteo físico.
+
 ## Compras (órdenes de compra)
 
 Menú **Compras**. Una orden de compra pasa por estos estados:
@@ -94,14 +109,14 @@ Menú **Compras**. Una orden de compra pasa por estos estados:
   Una orden **enviada** (sin recepciones) puede cancelarse; una con recepciones ya no.
 - Los proveedores no se borran: se desactivan para conservar el historial.
 
-## Reporte de movimientos por semana
+## Reporte de movimientos por semana y por día
 
-En **Reportes** (solo administrador) hay una tabla con las últimas 12 semanas, de lunes a domingo en la zona horaria de la aplicación
+En **Reportes** (solo administrador) hay una tabla con las últimas 12 semanas (o, con el botón *Por día*, los últimos 14 días; útil si el estudio dura pocos días), de lunes a domingo en la zona horaria de la aplicación
 (`APP_TIMEZONE`, por defecto America/Mazatlan). Por semana cuenta: salidas (y cuántas fueron con orden de trabajo y cuántas manuales),
 mermas, devoluciones, entradas, órdenes distintas con salidas y días con salidas. Incluye las semanas sin movimientos.
 
 - Son **solo conteos**: no lleva importes ni el nombre de quien registró, para que no sirva para vigilar a una persona.
-- **Descargar CSV** (`/reports/movimientos-semanales.csv?semanas=12`, de 1 a 52) lo abre Excel directamente.
+- **Descargar CSV** (`/reports/movimientos-semanales.csv?semanas=12`, de 1 a 52; o `/reports/movimientos-diarios.csv?dias=14`, de 1 a 120) lo abre Excel directamente.
 - CarpiSys cuenta lo que se registró; el total real de salidas del taller no lo conoce. Si lo usas como numerador de "% de salidas registradas",
   el denominador tiene que medirse por observación o conteo físico.
 
