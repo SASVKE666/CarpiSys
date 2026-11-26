@@ -11,6 +11,7 @@ use App\Models\OverheadRate;
 use App\Models\PurchaseOrder;
 use App\Models\Supplier;
 use App\Models\WorkOrder;
+use App\Services\MaterialVarianceService;
 use App\Services\MovementReportService;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -55,9 +56,13 @@ class DashboardController extends Controller
                 'reserved'    => (float) $s->reserved_qty,
             ]);
 
-        $orders = WorkOrder::with(['materials.item', 'materials.location', 'materials.movement.user', 'laborRecords'])
+        $variance = app(MaterialVarianceService::class);
+
+        $orderModels = WorkOrder::with(['materials.item', 'materials.location', 'materials.movement.user', 'laborRecords', 'estimates.item'])
             ->orderByDesc('created_at')
-            ->get()
+            ->get();
+
+        $orders = $orderModels
             ->map(fn ($o) => [
                 'id'            => $o->id,
                 'code'          => $o->code,
@@ -72,6 +77,8 @@ class DashboardController extends Controller
                 'overhead'      => $money($o->overhead_cost),
                 'quoted'        => $money($o->quoted_price),
                 'machine_hours' => $isAdmin ? (float) $o->machine_hours : null,
+                // Material estimado frente a lo registrado (solo cantidades, no importes)
+                'estimates'     => $variance->lines($o),
                 'materials'     => $o->materials->map(fn ($m) => [
                     'id'        => $m->id,
                     'item_id'   => $m->item_id,
@@ -170,6 +177,9 @@ class DashboardController extends Controller
             'hasOverheadRates' => $isAdmin ? OverheadRate::active()->exists() : null,
             // Conteo semanal de movimientos (sin importes): solo se envía al administrador, que ve Reportes
             'weeklyMovements'  => $isAdmin ? app(MovementReportService::class)->weekly(12) : null,
+            'dailyMovements'   => $isAdmin ? app(MovementReportService::class)->daily(14) : null,
+            // Material estimado vs. registrado de las órdenes completadas (para el estudio)
+            'varianceSummary'  => $isAdmin ? $variance->summary($orderModels) : null,
         ]);
     }
 }

@@ -26,6 +26,7 @@ class WorkOrder extends Model {
     ];
 
     public function materials()    { return $this->hasMany(WorkOrderMaterial::class); }
+    public function estimates()    { return $this->hasMany(WorkOrderEstimate::class); }
     public function laborRecords() { return $this->hasMany(LaborRecord::class); }
     public function idleTimes()    { return $this->hasMany(IdleTimeRecord::class); }
     public function creator()      { return $this->belongsTo(User::class, 'created_by'); }

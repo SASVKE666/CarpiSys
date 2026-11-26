@@ -11,6 +11,14 @@ export const MOV_TYPES = {
 };
 const movType = t => MOV_TYPES[t] ?? { label:String(t), sign:"", col:C.muted, bg:"#F5F4F2" };
 const OUT = ["salida","merma"];
+// Estado de cada línea del material estimado frente a lo registrado (ver MaterialVarianceService)
+const VARIANCE = {
+  ok:           { label:"Dentro de lo esperado", col:C.green,  bg:C.greenBg },
+  bajo:         { label:"Menos de lo estimado",  col:C.yellow, bg:C.yellowBg },
+  exceso:       { label:"Más de lo estimado",    col:C.red,    bg:C.redBg },
+  sin_estimado: { label:"Sin estimado",          col:C.muted,  bg:"#F5F4F2" },
+};
+export { VARIANCE };
 const num = n => Number(n).toLocaleString("es-MX",{maximumFractionDigits:4});
 
 const stockOf = (inv,itemId,locId) => inv.find(r=>r.item_id===itemId && r.location_id===locId)?.qty ?? 0;
@@ -133,6 +141,8 @@ export function OrderDetailModal({order,items,inv,locations,isAdmin,hasOverheadR
   const usable=items.filter(i=>i.type!=="herramienta");     // las herramientas no se consumen
   const [mat,setMat]=useState({item_id:usable[0]?.id??"",location_id:usable[0]?bestLoc(inv,usable[0].id,locations):(locations[0]?.id??""),quantity:"",notes:""});
   const [lab,setLab]=useState({hours:"",work_date:today,task_description:"",worker_name:"",hourly_rate:""});
+  const [est,setEst]=useState({item_id:usable[0]?.id??"",quantity:""});
+  const [estErr,setEstErr]=useState({});
   const [matErr,setMatErr]=useState({});
   const [labErr,setLabErr]=useState({});
   const [busy,setBusy]=useState(false);
@@ -154,6 +164,12 @@ export function OrderDetailModal({order,items,inv,locations,isAdmin,hasOverheadR
   const removeMaterial=m=>{
     if(!window.confirm(`¿Devolver ${num(m.qty)} ${m.unit} de "${m.name}" al inventario?`)) return;
     router.delete(`${base}/materials/${m.id}`,opts({onError:setMatErr}));
+  };
+  const addEstimate=()=>router.post(`${base}/estimates`,est,opts({
+    onSuccess:()=>{setEst(p=>({...p,quantity:""}));setEstErr({});},onError:setEstErr}));
+  const removeEstimate=l=>{
+    if(!window.confirm(`¿Quitar "${l.name}" del material estimado?`)) return;
+    router.delete(`${base}/estimates/${l.estimate_id}`,opts({onError:setEstErr}));
   };
   const addLabor=()=>router.post(`${base}/labor`,{
       hours:lab.hours, work_date:lab.work_date, task_description:lab.task_description,
@@ -240,6 +256,53 @@ export function OrderDetailModal({order,items,inv,locations,isAdmin,hasOverheadR
               <ErrorBox errs={matErr}/>
               <div style={{display:"flex",justifyContent:"flex-end"}}>
                 <Btn label={busy?"Guardando…":"Usar material (descuenta inventario)"} onClick={()=>{if(!busy)addMaterial();}}/>
+              </div>
+            </div>
+          )}
+        </Section>
+
+        {/* MATERIAL ESTIMADO */}
+        <Section title="Material estimado" right={<span style={{fontSize:11,color:C.muted,fontWeight:700}}>vs. lo registrado</span>}>
+          {order.estimates.length>0?(
+            <div style={{overflowX:"auto"}}>
+              <table style={{width:"100%",borderCollapse:"collapse",minWidth:520}}>
+                <thead><tr>{["Material","Estimado","Registrado","Diferencia","Estado",""].map((h,i)=><th key={i} style={th}>{h}</th>)}</tr></thead>
+                <tbody>
+                  {order.estimates.map(l=>{
+                    const v=VARIANCE[l.status]??VARIANCE.sin_estimado;
+                    return(
+                      <tr key={l.item_id}>
+                        <td style={{...td,fontSize:12,fontWeight:600,color:C.text}}>{l.name}</td>
+                        <td style={{...td,fontSize:12,color:C.text,whiteSpace:"nowrap"}}>{l.estimated>0?`${num(l.estimated)} ${l.unit}`:"—"}</td>
+                        <td style={{...td,fontSize:12,color:C.text,whiteSpace:"nowrap"}}>{num(l.used)} {l.unit}</td>
+                        <td style={{...td,fontSize:12,color:C.muted,whiteSpace:"nowrap"}}>{l.estimated>0?`${l.diff>0?"+":""}${num(l.diff)} (${l.pct>0?"+":""}${l.pct}%)`:"—"}</td>
+                        <td style={td}><Tag label={v.label} col={v.col} bg={v.bg}/></td>
+                        <td style={{...td,textAlign:"right"}}>{isAdmin&&order.is_open&&l.estimate_id&&<Btn small danger Icon={Trash2} onClick={()=>removeEstimate(l)}/>}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          ):<p style={{fontSize:12,color:C.faint}}>{isAdmin?"Aún no hay material estimado para esta orden.":"El administrador no ha indicado el material estimado de esta orden."}</p>}
+          <p style={{fontSize:11,color:C.faint}}>
+            Menos de lo estimado puede significar salidas sin registrar o que se usó menos; más, desperdicio o un cálculo corto. Entre 90 % y 110 % se considera dentro de lo esperado.
+          </p>
+
+          {isAdmin&&order.is_open&&(
+            <div style={{background:"#FAFAF9",borderRadius:8,padding:12,display:"flex",flexDirection:"column",gap:10}}>
+              <div className="rg1" style={{display:"grid",gridTemplateColumns:"2fr 1fr",gap:10}}>
+                <div>
+                  <label style={lbl}>Material</label>
+                  <select value={est.item_id} onChange={e=>setEst(p=>({...p,item_id:Number(e.target.value)}))} style={inp}>
+                    {usable.map(i=><option key={i.id} value={i.id}>{i.sku} — {i.name}</option>)}
+                  </select>
+                </div>
+                <Field label={`Cantidad estimada${usable.find(i=>i.id===est.item_id)?` (${usable.find(i=>i.id===est.item_id).unit})`:""}`} type="number" value={est.quantity} onChange={v=>setEst(p=>({...p,quantity:v}))}/>
+              </div>
+              <ErrorBox errs={estErr}/>
+              <div style={{display:"flex",justifyContent:"flex-end"}}>
+                <Btn label={busy?"Guardando…":"Guardar estimado (no mueve inventario)"} onClick={()=>{if(!busy)addEstimate();}}/>
               </div>
             </div>
           )}

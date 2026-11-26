@@ -7,6 +7,7 @@ use App\Http\Controllers\OverheadRateController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\PurchaseOrderController;
 use App\Http\Controllers\ReportController;
+use App\Http\Controllers\WorkOrderEstimateController;
 use App\Http\Controllers\SupplierController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\WorkOrderController;
@@ -64,6 +65,11 @@ Route::middleware(['auth', 'verified', 'active', 'role:admin'])->group(function 
     Route::resource('items', ItemController::class)->only(['store', 'update', 'destroy']);
     Route::post('/work-orders', [WorkOrderController::class, 'store'])->name('work-orders.store');
     Route::post('/inventory/stock', [InventoryController::class, 'saveStock'])->name('inventory.stock');
+    // Material estimado de la orden (el plan contra el que se compara lo registrado)
+    Route::post('/work-orders/{workOrder}/estimates', [WorkOrderEstimateController::class, 'store'])
+         ->name('work-orders.estimates.store');
+    Route::delete('/work-orders/{workOrder}/estimates/{estimate}', [WorkOrderEstimateController::class, 'destroy'])
+         ->name('work-orders.estimates.destroy');
     Route::delete('/work-orders/{workOrder}/labor/{labor}', [WorkOrderCostController::class, 'removeLabor'])
          ->name('work-orders.labor.destroy');
 
@@ -78,6 +84,7 @@ Route::middleware(['auth', 'verified', 'active', 'role:admin'])->group(function 
     Route::put('/suppliers/{supplier}', [SupplierController::class, 'update'])->name('suppliers.update');
 
     Route::get('/reports/movimientos-semanales.csv', [ReportController::class, 'weeklyCsv'])->name('reports.weekly-csv');
+    Route::get('/reports/movimientos-diarios.csv', [ReportController::class, 'dailyCsv'])->name('reports.daily-csv');
 
     Route::get('/overhead-rates', [OverheadRateController::class, 'index'])->name('overhead-rates.index');
     Route::post('/overhead-rates', [OverheadRateController::class, 'store'])->name('overhead-rates.store');
