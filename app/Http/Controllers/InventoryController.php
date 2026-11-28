@@ -12,7 +12,7 @@ class InventoryController extends Controller
 {
     public function index()
     {
-        $stocks = \App\Models\InventoryStock::with(['item.category','location'])
+        $stocks = \App\Models\InventoryStock::with(['item.category','item.stocks','location'])
             ->get()
             ->map(fn($s) => [
                 ...$s->toArray(),

@@ -8,9 +8,23 @@ import { MovementModal, MovementsTable, OrderDetailModal } from "../Components/C
 import { PurchasesView, PurchaseFormModal, ReceiveModal, SuppliersModal } from "../Components/Compras";
 import { C, ITEM_TYPES, ORDER_STATUS, statusOf, UNITS, $m, card, inp, lbl, th, td, Tag, Btn, Field, Modal } from "../Components/ui";
 
+// Existencia y mínimo POR ARTÍCULO: suma de todas sus ubicaciones (almacenes). El mínimo del
+// artículo es la suma de los mínimos de sus ubicaciones; hay alerta cuando la existencia total
+// es menor o igual a ese mínimo.
+const totalsByItem = inv => {
+  const m = new Map();
+  inv.forEach(r=>{
+    const t = m.get(r.item_id) || {item_id:r.item_id,qty:0,min:0,reserved:0,rows:[]};
+    t.qty += r.qty; t.min += r.min_qty; t.reserved += r.reserved; t.rows.push(r);
+    m.set(r.item_id,t);
+  });
+  return m;
+};
+const lowItems = inv => [...totalsByItem(inv).values()].filter(t=>Math.round(t.qty*1e4)<=Math.round(t.min*1e4));
+
 // ── DASHBOARD ─────────────────────────────────────────────────────────────────
 function Dashboard({items,inv,orders,setView,isAdmin,movements,myHours}){
-  const low   = inv.filter(r=>r.qty<=r.min_qty);
+  const low   = lowItems(inv);
   const val   = inv.reduce((s,r)=>{const i=items.find(x=>x.id===r.item_id);return s+(i?i.cost*r.qty:0);},0);
   const comp  = orders.filter(o=>o.status==="completada");
   const rev   = comp.reduce((s,o)=>s+Number(o.quoted),0);
@@ -88,10 +102,10 @@ function Dashboard({items,inv,orders,setView,isAdmin,movements,myHours}){
             : low.map(r=>{
                 const item=items.find(i=>i.id===r.item_id);
                 return(
-                  <div key={r.id} style={{display:"flex",justifyContent:"space-between",padding:"8px 0",borderBottom:`1px solid ${C.border}`}}>
+                  <div key={r.item_id} style={{display:"flex",justifyContent:"space-between",padding:"8px 0",borderBottom:`1px solid ${C.border}`}}>
                     <div>
                       <p style={{fontSize:12,fontWeight:600,color:C.text}}>{item?.name}</p>
-                      <p style={{fontSize:11,color:C.muted}}>{r.location} · Mín: {r.min_qty} {item?.unit}</p>
+                      <p style={{fontSize:11,color:C.muted}}>{r.rows.map(x=>`${x.location} ${x.qty}`).join(" · ")} · Mín: {r.min} {item?.unit}</p>
                     </div>
                     <span style={{background:C.redBg,color:C.red,padding:"3px 9px",borderRadius:99,fontSize:11,fontWeight:700,alignSelf:"center"}}>{r.qty}</span>
                   </div>
@@ -127,7 +141,8 @@ function Dashboard({items,inv,orders,setView,isAdmin,movements,myHours}){
 function ItemsView({items,inv,onEdit,onDelete,onNew,canEdit}){
   const [q,setQ]   = useState("");
   const [ft,setFt] = useState("all");
-  const stockFor   = id=>inv.find(r=>r.item_id===id);
+  const totals     = totalsByItem(inv);
+  const stockFor   = id=>totals.get(id);
   const filtered   = items.filter(i=>(ft==="all"||i.type===ft)&&
     (i.name.toLowerCase().includes(q.toLowerCase())||i.sku.toLowerCase().includes(q.toLowerCase())));
   return(
@@ -148,7 +163,7 @@ function ItemsView({items,inv,onEdit,onDelete,onNew,canEdit}){
           <thead><tr>{["SKU","Nombre","Tipo","Categoría","Unidad",...(canEdit?["Costo Unit."]:[]),"Stock",""].map(h=><th key={h} style={th}>{h}</th>)}</tr></thead>
           <tbody>
             {filtered.map(item=>{
-              const stk=stockFor(item.id); const low=stk&&stk.qty<=stk.min_qty; const t=ITEM_TYPES[item.type];
+              const stk=stockFor(item.id); const low=stk&&Math.round(stk.qty*1e4)<=Math.round(stk.min*1e4); const t=ITEM_TYPES[item.type];
               return(
                 <tr key={item.id} onMouseEnter={e=>e.currentTarget.style.background="#FFFBF5"} onMouseLeave={e=>e.currentTarget.style.background=""}>
                   <td style={{...td,fontSize:11,fontFamily:"monospace",fontWeight:700,color:C.amber}}>{item.sku}</td>
@@ -177,7 +192,8 @@ function ItemsView({items,inv,onEdit,onDelete,onNew,canEdit}){
 
 // ── INVENTORY VIEW ────────────────────────────────────────────────────────────
 function InventoryView({items,inv,onNew,onMove,movements,canEdit}){
-  const low=inv.filter(r=>r.qty<=r.min_qty);
+  const low=lowItems(inv);
+  const totals=totalsByItem(inv);
   return(
     <div style={{display:"flex",flexDirection:"column",gap:14}}>
       {low.length>0&&(
@@ -197,7 +213,8 @@ function InventoryView({items,inv,onNew,onMove,movements,canEdit}){
             {inv.map(r=>{
               const item=items.find(i=>i.id===r.item_id); if(!item) return null;
               const avail=r.qty-r.reserved; const t=ITEM_TYPES[item.type];
-              const isCrit=r.qty===0; const isLow=r.qty<=r.min_qty;
+              const tot=totals.get(r.item_id);
+              const isCrit=tot.qty===0; const isLow=Math.round(tot.qty*1e4)<=Math.round(tot.min*1e4);
               const sc=isCrit?C.red:isLow?C.yellow:C.green;
               const sb=isCrit?C.redBg:isLow?C.yellowBg:C.greenBg;
               const sl=isCrit?"Sin stock":isLow?"Stock bajo":"OK";
@@ -217,6 +234,7 @@ function InventoryView({items,inv,onNew,onMove,movements,canEdit}){
           </tbody>
         </table>
       </div>
+      <p style={{fontSize:11,color:C.muted,margin:0}}>La alerta es por artículo: se suma la existencia de todas las ubicaciones y se compara con la suma de sus mínimos.</p>
       <MovementsTable movements={movements} isAdmin={canEdit}/>
     </div>
   );
@@ -545,7 +563,7 @@ function InvModal({editing,items,locations,onSave,onClose}){
         <Field label="Ubicación" value={f.location_id} onChange={v=>set("location_id",Number(v))} opts={locations.map(l=>({v:l.id,l:l.name}))}/>
         <div className="rg1" style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:10}}>
           <Field label="Cantidad Total" type="number" value={f.qty} onChange={v=>set("qty",Number(v))}/>
-          <Field label="Stock Mínimo" type="number" value={f.min_qty} onChange={v=>set("min_qty",Number(v))}/>
+          <Field label="Stock Mínimo (de esta ubicación; el del artículo es la suma)" type="number" value={f.min_qty} onChange={v=>set("min_qty",Number(v))}/>
           <Field label="Reservado" type="number" value={f.reserved} onChange={v=>set("reserved",Number(v))}/>
         </div>
         <div style={{display:"flex",justifyContent:"flex-end",gap:8,paddingTop:8,borderTop:`1px solid ${C.border}`}}>
@@ -646,7 +664,7 @@ export default function App({ itemsData=[], invData=[], ordersData=[], movements
   const [modal,  setModal]  = useState(null);
   const [editing,setEditing]= useState(null);
 
-  const lowCount = inv.filter(r=>r.qty<=r.min_qty).length;
+  const lowCount = lowItems(inv).length;
 
   const closeModal = ()=>{ setModal(null); setEditing(null); };
   const detailOrder = detailId!==null ? orders.find(o=>o.id===detailId) : null;

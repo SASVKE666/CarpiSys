@@ -16,7 +16,8 @@ class InventoryStock extends Model {
     public function getAvailableAttribute(): float {
         return max(0, $this->quantity - $this->reserved_qty);
     }
+    // La alerta es del artículo (suma de todas sus ubicaciones), no de esta ubicación sola.
     public function getIsLowAttribute(): bool {
-        return $this->quantity <= $this->min_quantity;
+        return $this->item->is_low_stock;
     }
 }
