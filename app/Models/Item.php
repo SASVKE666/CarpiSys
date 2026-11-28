@@ -27,17 +27,21 @@ class Item extends Model {
         return $this->stocks->sum('quantity') - $this->stocks->sum('reserved_qty');
     }
 
-    // ¿Alguna ubicación con stock bajo?
+    // ¿Stock bajo? Se evalúa por artículo: la existencia es la suma de todas sus ubicaciones y el
+    // mínimo es la suma de los mínimos de esas ubicaciones. Un artículo sin existencias registradas
+    // no genera alerta.
     public function getIsLowStockAttribute(): bool {
-        return $this->stocks->contains(fn($s) => $s->quantity <= $s->min_quantity);
+        if ($this->stocks->isEmpty()) return false;
+        return round((float) $this->stocks->sum('quantity'), 4) <= round((float) $this->stocks->sum('min_quantity'), 4);
     }
 
     // Scopes
     public function scopeActive($q)           { return $q->where('is_active', true); }
     public function scopeByType($q, $type)    { return $q->where('item_type', $type); }
     public function scopeLowStock($q) {
-        return $q->whereHas('stocks', fn($s) =>
-            $s->whereColumn('quantity', '<=', 'min_quantity')
+        return $q->whereHas('stocks')->whereRaw(
+            '(select coalesce(sum(quantity), 0) from inventory_stocks where inventory_stocks.item_id = items.id)'
+            . ' <= (select coalesce(sum(min_quantity), 0) from inventory_stocks where inventory_stocks.item_id = items.id)'
         );
     }
 }
